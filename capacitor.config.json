@@ -1,0 +1,8 @@
+{
+  "appId": "com.miscuentas.app",
+  "appName": "Mis Cuentas",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}

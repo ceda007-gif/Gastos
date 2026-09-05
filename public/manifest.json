@@ -1,0 +1,18 @@
+{
+  "name": "Mis Cuentas — Control de Gastos",
+  "short_name": "Mis Cuentas",
+  "description": "Control de gastos personales y de negocio con escaneo de tickets mediante Google Gemini IA",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F8F6F0",
+  "theme_color": "#1B3B2B",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%231B3B2B'/><path d='M140 120h232v272H140z' fill='%23F8F6F0'/><path d='M190 120v272M140 180h232M140 240h232M140 300h232' stroke='%23DDD6C6' stroke-width='12'/><circle cx='310' cy='240' r='30' fill='%238C5A35'/></svg>",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

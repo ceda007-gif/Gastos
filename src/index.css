@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #F8F6F0;
+    color: #1C231F;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Ruled lines pattern subtle for ledger feel */
+  .ledger-paper {
+    background-color: #FCFBF8;
+    background-image: linear-gradient(#F0EBE0 1px, transparent 1px);
+    background-size: 100% 2.25rem;
+  }
+
+  .ledger-border {
+    border-color: #DDD6C6;
+  }
+
+  .ledger-border-b {
+    border-bottom: 1px solid #EBE5D8;
+  }
+}
+
+/* Custom scrollbars for ledger style */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F3EFE5;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C8BEAB;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #A89D88;
+}
+
+/* Print friendly ledger styling */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #ffffff;
+    color: #000000;
+  }
+}
