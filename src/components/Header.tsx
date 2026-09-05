@@ -1,10 +1,11 @@
 import React, { useRef } from 'react';
-import { Camera, Upload, PlusCircle, Settings, BookOpen, KeyRound, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Camera, Upload, PlusCircle, Settings, BookOpen, KeyRound, CheckCircle2, AlertCircle, Layers } from 'lucide-react';
 import { AppSettings } from '../types';
 
 interface HeaderProps {
   settings: AppSettings;
   onOpenScanner: (file: File) => void;
+  onOpenBatchScanner: (files: File[]) => void;
   onOpenManualEntry: () => void;
   onOpenSettings: () => void;
 }
@@ -12,6 +13,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   settings,
   onOpenScanner,
+  onOpenBatchScanner,
   onOpenManualEntry,
   onOpenSettings
 }) => {
@@ -21,8 +23,13 @@ export const Header: React.FC<HeaderProps> = ({
   const hasApiKey = Boolean(settings.geminiApiKey && settings.geminiApiKey.trim().length > 5);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      onOpenScanner(e.target.files[0]);
+    if (e.target.files && e.target.files.length > 0) {
+      const files = Array.from(e.target.files);
+      if (files.length === 1) {
+        onOpenScanner(files[0]);
+      } else {
+        onOpenBatchScanner(files);
+      }
       e.target.value = ''; // Reset input so same file can be chosen again
     }
   };
@@ -79,6 +86,7 @@ export const Header: React.FC<HeaderProps> = ({
               ref={fileInputRef}
               type="file"
               accept="image/*,image/heic,image/heif"
+              multiple
               className="hidden"
               onChange={handleFileChange}
             />
@@ -99,7 +107,7 @@ export const Header: React.FC<HeaderProps> = ({
               <span>Tomar Foto</span>
             </button>
 
-            {/* Botón: Subir Foto */}
+            {/* Botón: Subir Tickets (1 o varios a la vez) */}
             <button
               onClick={() => {
                 if (!hasApiKey) {
@@ -109,10 +117,10 @@ export const Header: React.FC<HeaderProps> = ({
                 fileInputRef.current?.click();
               }}
               className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3.5 py-2 rounded-sm bg-ledger-card text-forest-900 hover:bg-ledger-rule border border-ledger-border font-medium text-xs sm:text-sm transition-all duration-150"
-              title="Subir imagen de comprobante guardada"
+              title="Subir 1 o varios tickets a la vez desde tu galería"
             >
-              <Upload className="w-4 h-4 text-forest-700" />
-              <span>Subir Foto</span>
+              <Layers className="w-4 h-4 text-forest-700" />
+              <span>Subir Ticket(s)</span>
             </button>
 
             {/* Botón: Gasto a mano */}

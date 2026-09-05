@@ -29,6 +29,23 @@ export type Currency = 'MXN' | 'USD';
 
 export const CURRENCIES: Currency[] = ['MXN', 'USD'];
 
+export type Person = 'Yuli' | 'Carlos' | 'Pareja';
+
+export const PERSONS: Person[] = ['Yuli', 'Carlos', 'Pareja'];
+
+export type PaymentMethod =
+  | 'Efectivo'
+  | 'Tarjeta de Crédito'
+  | 'Tarjeta de Débito'
+  | 'Transferencia';
+
+export const PAYMENT_METHODS: PaymentMethod[] = [
+  'Efectivo',
+  'Tarjeta de Crédito',
+  'Tarjeta de Débito',
+  'Transferencia'
+];
+
 export interface Expense {
   id: string;
   comercio: string;
@@ -36,6 +53,9 @@ export interface Expense {
   total: number;
   categoria: ExpenseCategory;
   moneda: Currency;
+  persona: Person;
+  metodoPago: PaymentMethod;
+  ultimos4Digitos?: string;
   notas?: string;
   fotoRecibo?: string; // Data URL opcional
   creadoEn: string; // ISO string
@@ -48,6 +68,8 @@ export interface GeminiParsedReceipt {
   total: number;
   categoria: ExpenseCategory;
   moneda: Currency;
+  metodoPago?: PaymentMethod;
+  ultimos4Digitos?: string;
 }
 
 export interface AppSettings {

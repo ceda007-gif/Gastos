@@ -246,9 +246,11 @@ ${EXPENSE_CATEGORIES.map(c => `   - "${c}"`).join('\n')}
      - "Entretenimiento": cine, eventos, salidas de ocio.
      - "Otros": cualquier gasto que no encaje en las categorías anteriores.
 5. "moneda": "MXN" o "USD". Si el ticket está en pesos mexicanos (símbolo $ sin especificar USD, o menciona IVA, RFC, pesos), usa "MXN". Si el comprobante indica dólares estadounidenses o es de un comercio de EE.UU., usa "USD".
+6. "metodoPago": "Efectivo" | "Tarjeta de Crédito" | "Tarjeta de Débito" | "Transferencia". Analiza si el comprobante menciona haber sido pagado con tarjeta (ej. "VISA", "MASTERCARD", "AMEX", "TARJETA", "T.C.", "T.D.", "BANCOMER", "BBVA", "BANAMEX", "VOUCHER") o en efectivo. Si no se puede deducir, usa "Efectivo".
+7. "ultimos4Digitos": Si el comprobante o voucher muestra los últimos 4 dígitos de la tarjeta (ej. "**** 4582", "CTA: 1234", "TERM: 9876"), extrae únicamente esos 4 dígitos como string (ej. "4582"). Si el pago fue en efectivo o no se aprecian los 4 dígitos, usa null.
 
 REGLAS OBLIGATORIAS:
-- NUNCA dejes ningún campo vacío o nulo. Si algún dato está parcialmente borroso, realiza tu mejor estimación razonable basada en el contexto.
+- NUNCA dejes ningún campo vacío o nulo (excepto ultimos4Digitos si no aplica tarjeta). Si algún dato está parcialmente borroso, realiza tu mejor estimación razonable basada en el contexto.
 - Si la imagen NO es un ticket, está completamente negra, o es totalmente ilegible (no se distingue ningún texto o cifra), devuelve el JSON con el campo "ilegitimo": true o "motivo_error": "explicacion".
 - Responde ÚNICAMENTE con el objeto JSON puro sin introducciones ni comentarios adicionales.`;
 
@@ -358,12 +360,29 @@ REGLAS OBLIGATORIAS:
         moneda = 'MXN';
       }
 
+      let metodoPago: any = 'Efectivo';
+      if (parsed.metodoPago && ['Efectivo', 'Tarjeta de Crédito', 'Tarjeta de Débito', 'Transferencia'].includes(parsed.metodoPago)) {
+        metodoPago = parsed.metodoPago;
+      } else if (parsed.ultimos4Digitos && String(parsed.ultimos4Digitos).trim().length === 4) {
+        metodoPago = 'Tarjeta de Crédito';
+      }
+
+      let ultimos4Digitos: string | undefined = undefined;
+      if (parsed.ultimos4Digitos) {
+        const digits = String(parsed.ultimos4Digitos).replace(/\D/g, '');
+        if (digits.length >= 4) {
+          ultimos4Digitos = digits.slice(-4);
+        }
+      }
+
       return {
         comercio,
         fecha,
         total,
         categoria,
-        moneda: moneda as 'MXN' | 'USD'
+        moneda: moneda as 'MXN' | 'USD',
+        metodoPago,
+        ultimos4Digitos
       };
     } catch (err: any) {
       lastError = err;

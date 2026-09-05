@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Expense, ExpenseCategory } from '../types';
+import { Expense, ExpenseCategory, Person, PERSONS, PaymentMethod, PAYMENT_METHODS } from '../types';
 import { formatMoney, formatDateHuman, CATEGORY_BADGES, formatMonthYear } from '../utils/formatters';
 import { 
   Calendar, 
@@ -10,7 +10,9 @@ import {
   Sparkles, 
   Filter, 
   ArrowUpDown,
-  FileText
+  FileText,
+  User,
+  CreditCard
 } from 'lucide-react';
 
 interface ExpenseListProps {
@@ -18,6 +20,8 @@ interface ExpenseListProps {
   allMonths: string[];
   selectedMonth: string; // 'ALL' or 'YYYY-MM'
   onSelectMonth: (month: string) => void;
+  selectedPerson: Person | 'ALL';
+  onSelectPerson: (person: Person | 'ALL') => void;
   onEditExpense: (expense: Expense) => void;
   onDeleteExpense: (id: string) => void;
   onViewReceipt: (photoUrl: string, merchant: string) => void;
@@ -28,12 +32,15 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
   allMonths,
   selectedMonth,
   onSelectMonth,
+  selectedPerson,
+  onSelectPerson,
   onEditExpense,
   onDeleteExpense,
   onViewReceipt
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('ALL');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
 
   // Filtrado
@@ -42,6 +49,22 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
       // Filtro por mes
       if (selectedMonth !== 'ALL') {
         if (!expense.fecha.startsWith(selectedMonth)) {
+          return false;
+        }
+      }
+
+      // Filtro por persona
+      if (selectedPerson !== 'ALL') {
+        const persona = expense.persona || 'Pareja';
+        if (persona !== selectedPerson) {
+          return false;
+        }
+      }
+
+      // Filtro por método de pago
+      if (selectedPaymentMethod !== 'ALL') {
+        const metodo = expense.metodoPago || 'Efectivo';
+        if (metodo !== selectedPaymentMethod) {
           return false;
         }
       }
@@ -57,8 +80,11 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
         const matchComercio = expense.comercio.toLowerCase().includes(query);
         const matchNotas = expense.notas ? expense.notas.toLowerCase().includes(query) : false;
         const matchCategoria = expense.categoria.toLowerCase().includes(query);
+        const matchPersona = (expense.persona || '').toLowerCase().includes(query);
+        const matchMetodo = (expense.metodoPago || '').toLowerCase().includes(query);
+        const matchDigitos = (expense.ultimos4Digitos || '').includes(query);
         const matchMonto = expense.total.toString().includes(query);
-        return matchComercio || matchNotas || matchCategoria || matchMonto;
+        return matchComercio || matchNotas || matchCategoria || matchPersona || matchMetodo || matchDigitos || matchMonto;
       }
 
       return true;
@@ -73,20 +99,49 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
     <div className="bg-ledger-paper border border-ledger-border rounded-sm shadow-ledger">
       
       {/* Barra de Filtros y Búsqueda */}
-      <div className="p-3 sm:p-4 border-b border-ledger-border bg-ledger-header/60 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="p-3 sm:p-4 border-b border-ledger-border bg-ledger-header/60 flex flex-col gap-3">
         
-        {/* Título de sección */}
-        <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-forest-800" />
-          <h2 className="font-serif text-lg font-bold text-ink-900 tracking-tight">
-            Libro Diario de Gastos
-          </h2>
-          <span className="text-xs font-mono bg-ledger-card text-ink-700 px-2 py-0.5 rounded-sm border border-ledger-border">
-            {filteredExpenses.length} {filteredExpenses.length === 1 ? 'registro' : 'registros'}
-          </span>
+        {/* Título de sección y selector rápido de cuenta */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-forest-800" />
+            <h2 className="font-serif text-lg font-bold text-ink-900 tracking-tight">
+              Libro Diario de Gastos
+            </h2>
+            <span className="text-xs font-mono bg-ledger-card text-ink-700 px-2 py-0.5 rounded-sm border border-ledger-border">
+              {filteredExpenses.length} {filteredExpenses.length === 1 ? 'registro' : 'registros'}
+            </span>
+          </div>
+
+          {/* Selector de persona en la lista */}
+          <div className="flex items-center gap-1 bg-ledger-card p-1 rounded-sm border border-ledger-border text-xs">
+            <button
+              onClick={() => onSelectPerson('ALL')}
+              className={`px-2 py-1 rounded-xs font-medium transition-colors ${
+                selectedPerson === 'ALL'
+                  ? 'bg-forest-800 text-white shadow-xs'
+                  : 'text-ink-600 hover:text-ink-900'
+              }`}
+            >
+              Todos
+            </button>
+            {PERSONS.map(p => (
+              <button
+                key={p}
+                onClick={() => onSelectPerson(p)}
+                className={`px-2 py-1 rounded-xs font-medium transition-colors ${
+                  selectedPerson === p
+                    ? 'bg-leather-700 text-white shadow-xs'
+                    : 'text-ink-600 hover:text-ink-900'
+                }`}
+              >
+                {p === 'Yuli' ? '🌸 Yuli' : p === 'Carlos' ? '💼 Carlos' : '👫 Pareja'}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Controles de filtro */}
+        {/* Fila de Controles de filtro secundarios */}
         <div className="flex flex-wrap items-center gap-2">
           
           {/* Selector de Mes */}
@@ -95,7 +150,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
             <select
               value={selectedMonth}
               onChange={(e) => onSelectMonth(e.target.value)}
-              className="pl-8 pr-7 py-1.5 text-xs sm:text-sm bg-ledger-paper border border-ledger-border rounded-sm text-ink-800 focus:outline-none focus:border-forest-700 font-medium cursor-pointer"
+              className="pl-8 pr-7 py-1.5 text-xs bg-ledger-paper border border-ledger-border rounded-sm text-ink-800 focus:outline-none focus:border-forest-700 font-medium cursor-pointer"
             >
               <option value="ALL">Todos los meses</option>
               {allMonths.map(monthKey => (
@@ -106,15 +161,32 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
             </select>
           </div>
 
+          {/* Filtro por Método de Pago */}
+          <div className="relative flex items-center">
+            <CreditCard className="w-3.5 h-3.5 absolute left-2.5 text-ink-500 pointer-events-none" />
+            <select
+              value={selectedPaymentMethod}
+              onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+              className="pl-8 pr-7 py-1.5 text-xs bg-ledger-paper border border-ledger-border rounded-sm text-ink-800 focus:outline-none focus:border-forest-700 font-medium cursor-pointer"
+            >
+              <option value="ALL">Todos los métodos</option>
+              {PAYMENT_METHODS.map(m => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Buscador */}
-          <div className="relative flex-1 sm:w-48">
+          <div className="relative flex-1 min-w-[160px]">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none" />
             <input
               type="text"
-              placeholder="Buscar comercio o nota..."
+              placeholder="Buscar comercio, notas, tarjeta..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-xs sm:text-sm bg-ledger-paper border border-ledger-border rounded-sm text-ink-800 placeholder:text-ink-400 focus:outline-none focus:border-forest-700"
+              className="w-full pl-8 pr-3 py-1.5 text-xs bg-ledger-paper border border-ledger-border rounded-sm text-ink-800 placeholder:text-ink-400 focus:outline-none focus:border-forest-700"
             />
           </div>
 
@@ -193,9 +265,39 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
                       {expense.notas}
                     </p>
                   )}
-                  {/* Badge de categoría visible en móviles */}
-                  <div className="sm:hidden mt-1">
-                    <span className={`inline-block text-[10px] px-1.5 py-0.2 rounded-xs border font-medium ${badge.bg} ${badge.text} ${badge.border}`}>
+                  
+                  {/* Badges de Persona, Método de Pago y Categoría */}
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    {/* Persona */}
+                    <span className={`inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-xs border font-medium ${
+                      (expense.persona || 'Pareja') === 'Yuli'
+                        ? 'bg-rose-50 text-rose-800 border-rose-200'
+                        : (expense.persona || 'Pareja') === 'Carlos'
+                        ? 'bg-sky-50 text-sky-800 border-sky-200'
+                        : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    }`}>
+                      {(expense.persona || 'Pareja') === 'Yuli' ? '🌸 Yuli' :
+                       (expense.persona || 'Pareja') === 'Carlos' ? '💼 Carlos' : '👫 Pareja'}
+                    </span>
+
+                    {/* Método de Pago */}
+                    <span className={`inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-xs border font-medium ${
+                      (expense.metodoPago || 'Efectivo') === 'Efectivo'
+                        ? 'bg-amber-50 text-amber-900 border-amber-200'
+                        : expense.metodoPago === 'Tarjeta de Crédito'
+                        ? 'bg-purple-50 text-purple-900 border-purple-200 font-mono'
+                        : expense.metodoPago === 'Tarjeta de Débito'
+                        ? 'bg-blue-50 text-blue-900 border-blue-200 font-mono'
+                        : 'bg-slate-50 text-slate-800 border-slate-200'
+                    }`}>
+                      {(expense.metodoPago || 'Efectivo') === 'Efectivo' ? '💵 Efectivo' :
+                       expense.metodoPago === 'Tarjeta de Crédito' ? `💳 TC ${expense.ultimos4Digitos ? `...${expense.ultimos4Digitos}` : ''}` :
+                       expense.metodoPago === 'Tarjeta de Débito' ? `💳 Débito ${expense.ultimos4Digitos ? `...${expense.ultimos4Digitos}` : ''}` :
+                       '📱 Transf.'}
+                    </span>
+
+                    {/* Badge de categoría visible en móviles */}
+                    <span className={`sm:hidden inline-block text-[10px] px-1.5 py-0.5 rounded-xs border font-medium ${badge.bg} ${badge.text} ${badge.border}`}>
                       {expense.categoria}
                     </span>
                   </div>

@@ -16,6 +16,9 @@ const SAMPLE_EXPENSES: Expense[] = [
     total: 845.50,
     categoria: 'Comida',
     moneda: 'MXN',
+    persona: 'Pareja',
+    metodoPago: 'Tarjeta de Crédito',
+    ultimos4Digitos: '4582',
     notas: 'Despensa semanal y frutas',
     creadoEn: new Date('2026-03-02T11:20:00Z').toISOString(),
     origen: 'escaneo_ia'
@@ -27,6 +30,9 @@ const SAMPLE_EXPENSES: Expense[] = [
     total: 650.00,
     categoria: 'Gasolina',
     moneda: 'MXN',
+    persona: 'Carlos',
+    metodoPago: 'Tarjeta de Crédito',
+    ultimos4Digitos: '1209',
     notas: 'Tanque lleno auto',
     creadoEn: new Date('2026-03-01T08:15:00Z').toISOString(),
     origen: 'escaneo_ia'
@@ -38,6 +44,8 @@ const SAMPLE_EXPENSES: Expense[] = [
     total: 8500.00,
     categoria: 'Renta',
     moneda: 'MXN',
+    persona: 'Pareja',
+    metodoPago: 'Transferencia',
     notas: 'Transferencia mensual arrendamiento',
     creadoEn: new Date('2026-03-01T07:00:00Z').toISOString(),
     origen: 'manual'
@@ -49,6 +57,8 @@ const SAMPLE_EXPENSES: Expense[] = [
     total: 480.00,
     categoria: 'Luz',
     moneda: 'MXN',
+    persona: 'Pareja',
+    metodoPago: 'Efectivo',
     notas: 'Bimestre enero-febrero',
     creadoEn: new Date('2026-02-28T14:30:00Z').toISOString(),
     origen: 'manual'
@@ -60,6 +70,9 @@ const SAMPLE_EXPENSES: Expense[] = [
     total: 14.00,
     categoria: 'Servicios',
     moneda: 'USD',
+    persona: 'Carlos',
+    metodoPago: 'Tarjeta de Crédito',
+    ultimos4Digitos: '1209',
     notas: 'Suscripción de software mensual',
     creadoEn: new Date('2026-02-20T10:00:00Z').toISOString(),
     origen: 'manual'
@@ -71,6 +84,8 @@ const SAMPLE_EXPENSES: Expense[] = [
     total: 520.00,
     categoria: 'Comida',
     moneda: 'MXN',
+    persona: 'Yuli',
+    metodoPago: 'Efectivo',
     notas: 'Comida de trabajo con cliente',
     creadoEn: new Date('2026-02-15T16:00:00Z').toISOString(),
     origen: 'escaneo_ia'
@@ -87,7 +102,13 @@ export function getStoredExpenses(): Expense[] {
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      return parsed;
+      // Migración defensiva: asegurar que todo gasto tenga persona y metodoPago
+      return parsed.map((e: any) => ({
+        ...e,
+        persona: e.persona || 'Pareja',
+        metodoPago: e.metodoPago || 'Efectivo',
+        ultimos4Digitos: e.ultimos4Digitos || undefined
+      }));
     }
     return [];
   } catch (error) {
@@ -130,14 +151,17 @@ export function saveStoredSettings(settings: AppSettings): void {
 }
 
 export function exportExpensesToCSV(expenses: Expense[]): void {
-  const headers = ['ID', 'Fecha', 'Comercio', 'Categoría', 'Total', 'Moneda', 'Origen', 'Notas'];
+  const headers = ['ID', 'Fecha', 'Persona', 'Comercio', 'Categoría', 'Total', 'Moneda', 'Método de Pago', 'Últimos 4 Dígitos', 'Origen', 'Notas'];
   const rows = expenses.map(e => [
     `"${e.id}"`,
     `"${e.fecha}"`,
+    `"${e.persona || 'Pareja'}"`,
     `"${(e.comercio || '').replace(/"/g, '""')}"`,
     `"${e.categoria}"`,
     e.total.toFixed(2),
     `"${e.moneda}"`,
+    `"${e.metodoPago || 'Efectivo'}"`,
+    `"${e.ultimos4Digitos ? '...' + e.ultimos4Digitos : ''}"`,
     `"${e.origen === 'escaneo_ia' ? 'Escaneo IA' : 'Manual'}"`,
     `"${(e.notas || '').replace(/"/g, '""')}"`
   ]);

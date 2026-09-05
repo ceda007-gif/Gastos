@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { AppSettings, Expense, GeminiParsedReceipt } from './types';
+import { AppSettings, Expense, GeminiParsedReceipt, Person } from './types';
 import { 
   getStoredExpenses, 
   saveStoredExpenses, 
@@ -12,23 +12,29 @@ import { ExpenseList } from './components/ExpenseList';
 import { CategoryBreakdown } from './components/CategoryBreakdown';
 import { MonthlyBreakdown } from './components/MonthlyBreakdown';
 import { ScannerModal } from './components/ScannerModal';
+import { BatchScannerModal } from './components/BatchScannerModal';
 import { ExpenseModal } from './components/ExpenseModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ReceiptViewerModal } from './components/ReceiptViewerModal';
 import { formatMonthYear } from './utils/formatters';
-import { Camera, PlusCircle, BookMarked, ShieldCheck } from 'lucide-react';
+import { Camera, PlusCircle, BookMarked, ShieldCheck, Layers } from 'lucide-react';
 
 export const App: React.FC = () => {
   // Estados persistentes
   const [expenses, setExpenses] = useState<Expense[]>(() => getStoredExpenses());
   const [settings, setSettings] = useState<AppSettings>(() => getStoredSettings());
 
-  // Filtro de mes activo
+  // Filtro de mes activo y persona activa
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
+  const [selectedPerson, setSelectedPerson] = useState<Person | 'ALL'>('ALL');
 
   // Estados de Modales
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [selectedFileForScan, setSelectedFileForScan] = useState<File | null>(null);
+
+  // Estados de Escáner por Lote
+  const [isBatchScannerOpen, setIsBatchScannerOpen] = useState(false);
+  const [batchFilesForScan, setBatchFilesForScan] = useState<File[]>([]);
 
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -43,6 +49,7 @@ export const App: React.FC = () => {
   const [receiptToView, setReceiptToView] = useState<{ url: string; merchant: string } | null>(null);
 
   const mobileCameraInputRef = useRef<HTMLInputElement>(null);
+  const mobileBatchInputRef = useRef<HTMLInputElement>(null);
 
   // Sincronizar gastos con localStorage
   useEffect(() => {
@@ -70,7 +77,7 @@ export const App: React.FC = () => {
     ? 'Todos los meses' 
     : formatMonthYear(selectedMonth);
 
-  // Acciones de Escáner
+  // Acciones de Escáner Individual
   const handleStartScan = (file: File) => {
     setSelectedFileForScan(file);
     setIsScannerOpen(true);
@@ -92,6 +99,21 @@ export const App: React.FC = () => {
     setEditingExpense(null);
     setPhotoOnlyForExpense(photoUrl);
     setIsExpenseModalOpen(true);
+  };
+
+  // Acciones de Escáner por Lote
+  const handleStartBatchScan = (files: File[]) => {
+    setBatchFilesForScan(files);
+    setIsBatchScannerOpen(true);
+  };
+
+  const handleSaveBatch = (batchExpenses: Omit<Expense, 'id' | 'creadoEn'>[]) => {
+    const newExpenses: Expense[] = batchExpenses.map((data, index) => ({
+      ...data,
+      id: `gasto-batch-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 6)}`,
+      creadoEn: new Date().toISOString()
+    }));
+    setExpenses(prev => [...newExpenses, ...prev]);
   };
 
   // Acciones de Gasto Manual
@@ -166,6 +188,7 @@ export const App: React.FC = () => {
       <Header
         settings={settings}
         onOpenScanner={handleStartScan}
+        onOpenBatchScanner={handleStartBatchScan}
         onOpenManualEntry={handleOpenManualEntry}
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
@@ -173,11 +196,13 @@ export const App: React.FC = () => {
       {/* Cuerpo Principal */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-5 sm:py-7 space-y-6">
         
-        {/* Balances por Moneda (MXN y USD separados sin mezclar) */}
+        {/* Balances por Moneda (MXN y USD) y Cuentas por Persona */}
         <section>
           <CurrencySummary
             expenses={expensesForCurrentFilter}
             selectedMonthLabel={selectedMonthLabel}
+            selectedPerson={selectedPerson}
+            onSelectPerson={setSelectedPerson}
           />
         </section>
 
@@ -191,6 +216,8 @@ export const App: React.FC = () => {
               allMonths={allMonths}
               selectedMonth={selectedMonth}
               onSelectMonth={setSelectedMonth}
+              selectedPerson={selectedPerson}
+              onSelectPerson={setSelectedPerson}
               onEditExpense={handleEditExpense}
               onDeleteExpense={handleDeleteExpense}
               onViewReceipt={(url, merchant) => setReceiptToView({ url, merchant })}
@@ -225,7 +252,7 @@ export const App: React.FC = () => {
       </main>
 
       {/* Barra de Acceso Rápido Flotante para Teléfonos Móviles */}
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-ledger-paper/95 backdrop-blur-md border-t border-ledger-border px-4 py-2.5 flex items-center justify-around shadow-lg">
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-ledger-paper/95 backdrop-blur-md border-t border-ledger-border px-3 py-2 flex items-center justify-around shadow-lg">
         <input
           ref={mobileCameraInputRef}
           type="file"
@@ -240,6 +267,26 @@ export const App: React.FC = () => {
           }}
         />
 
+        <input
+          ref={mobileBatchInputRef}
+          type="file"
+          accept="image/*,image/heic,image/heif"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files && e.target.files.length > 0) {
+              const files = Array.from(e.target.files);
+              if (files.length === 1) {
+                handleStartScan(files[0]);
+              } else {
+                handleStartBatchScan(files);
+              }
+              e.target.value = '';
+            }
+          }}
+        />
+
+        {/* Cámara Móvil */}
         <button
           onClick={() => {
             if (!settings.geminiApiKey) {
@@ -248,22 +295,40 @@ export const App: React.FC = () => {
             }
             mobileCameraInputRef.current?.click();
           }}
-          className="flex flex-col items-center gap-1 text-forest-800 font-medium active:scale-95 transition-transform"
+          className="flex flex-col items-center gap-0.5 text-forest-800 font-medium active:scale-95 transition-transform"
         >
-          <div className="w-10 h-10 rounded-full bg-forest-800 text-[#FAF6ED] flex items-center justify-center shadow-md">
-            <Camera className="w-5 h-5 text-[#D8E6DE]" />
+          <div className="w-9 h-9 rounded-full bg-forest-800 text-[#FAF6ED] flex items-center justify-center shadow-md">
+            <Camera className="w-4 h-4 text-[#D8E6DE]" />
           </div>
-          <span className="text-[11px] font-semibold">Tomar Foto</span>
+          <span className="text-[10px] font-semibold">Tomar Foto</span>
         </button>
 
+        {/* Subir Lote Móvil */}
+        <button
+          onClick={() => {
+            if (!settings.geminiApiKey) {
+              setIsSettingsOpen(true);
+              return;
+            }
+            mobileBatchInputRef.current?.click();
+          }}
+          className="flex flex-col items-center gap-0.5 text-forest-800 font-medium active:scale-95 transition-transform"
+        >
+          <div className="w-9 h-9 rounded-full bg-forest-100 border border-forest-300 text-forest-800 flex items-center justify-center shadow-xs">
+            <Layers className="w-4 h-4 text-forest-800" />
+          </div>
+          <span className="text-[10px] font-semibold">Varios Tickets</span>
+        </button>
+
+        {/* Gasto a Mano Móvil */}
         <button
           onClick={handleOpenManualEntry}
-          className="flex flex-col items-center gap-1 text-leather-800 font-medium active:scale-95 transition-transform"
+          className="flex flex-col items-center gap-0.5 text-leather-800 font-medium active:scale-95 transition-transform"
         >
-          <div className="w-10 h-10 rounded-full bg-leather-700 text-[#FAF6ED] flex items-center justify-center shadow-md">
-            <PlusCircle className="w-5 h-5 text-[#F4E1D2]" />
+          <div className="w-9 h-9 rounded-full bg-leather-700 text-[#FAF6ED] flex items-center justify-center shadow-md">
+            <PlusCircle className="w-4 h-4 text-[#F4E1D2]" />
           </div>
-          <span className="text-[11px] font-semibold">A Mano</span>
+          <span className="text-[10px] font-semibold">A Mano</span>
         </button>
       </div>
 
@@ -295,6 +360,18 @@ export const App: React.FC = () => {
           setIsScannerOpen(false);
           mobileCameraInputRef.current?.click();
         }}
+      />
+
+      <BatchScannerModal
+        isOpen={isBatchScannerOpen}
+        files={batchFilesForScan}
+        settings={settings}
+        defaultPerson={selectedPerson !== 'ALL' ? selectedPerson : 'Pareja'}
+        onClose={() => {
+          setIsBatchScannerOpen(false);
+          setBatchFilesForScan([]);
+        }}
+        onSaveBatch={handleSaveBatch}
       />
 
       <ExpenseModal

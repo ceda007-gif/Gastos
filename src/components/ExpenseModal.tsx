@@ -5,10 +5,14 @@ import {
   EXPENSE_CATEGORIES, 
   Expense, 
   ExpenseCategory, 
-  GeminiParsedReceipt 
+  GeminiParsedReceipt,
+  Person,
+  PERSONS,
+  PaymentMethod,
+  PAYMENT_METHODS
 } from '../types';
 import { getTodayDateString } from '../utils/formatters';
-import { X, Sparkles, Image as ImageIcon, Save, AlertCircle } from 'lucide-react';
+import { X, Sparkles, Image as ImageIcon, Save, AlertCircle, User, CreditCard } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface ExpenseModalProps {
@@ -36,6 +40,9 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   const [total, setTotal] = useState<string>('');
   const [categoria, setCategoria] = useState<ExpenseCategory>('Comida');
   const [moneda, setMoneda] = useState<Currency>('MXN');
+  const [persona, setPersona] = useState<Person>('Pareja');
+  const [metodoPago, setMetodoPago] = useState<PaymentMethod>('Efectivo');
+  const [ultimos4Digitos, setUltimos4Digitos] = useState('');
   const [notas, setNotas] = useState('');
   const [fotoRecibo, setFotoRecibo] = useState<string | undefined>(undefined);
   const [origen, setOrigen] = useState<'manual' | 'escaneo_ia'>('manual');
@@ -51,6 +58,9 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       setTotal(editingExpense.total.toString());
       setCategoria(editingExpense.categoria);
       setMoneda(editingExpense.moneda);
+      setPersona(editingExpense.persona || 'Pareja');
+      setMetodoPago(editingExpense.metodoPago || 'Efectivo');
+      setUltimos4Digitos(editingExpense.ultimos4Digitos || '');
       setNotas(editingExpense.notas || '');
       setFotoRecibo(editingExpense.fotoRecibo);
       setOrigen(editingExpense.origen);
@@ -61,6 +71,9 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       setTotal(scannedData.parsed.total ? scannedData.parsed.total.toString() : '');
       setCategoria(scannedData.parsed.categoria || 'Comida');
       setMoneda(scannedData.parsed.moneda || 'MXN');
+      setPersona('Pareja');
+      setMetodoPago(scannedData.parsed.metodoPago || 'Efectivo');
+      setUltimos4Digitos(scannedData.parsed.ultimos4Digitos || '');
       setNotas('Leído de ticket escaneado con Gemini');
       setFotoRecibo(scannedData.photoUrl);
       setOrigen('escaneo_ia');
@@ -71,6 +84,9 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       setTotal('');
       setCategoria('Comida');
       setMoneda('MXN');
+      setPersona('Pareja');
+      setMetodoPago('Efectivo');
+      setUltimos4Digitos('');
       setNotas('');
       setFotoRecibo(photoOnly);
       setOrigen('manual');
@@ -82,6 +98,9 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       setTotal('');
       setCategoria('Comida');
       setMoneda('MXN');
+      setPersona('Pareja');
+      setMetodoPago('Efectivo');
+      setUltimos4Digitos('');
       setNotas('');
       setFotoRecibo(undefined);
       setOrigen('manual');
@@ -90,6 +109,8 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   }, [isOpen, editingExpense, scannedData, photoOnly]);
 
   if (!isOpen) return null;
+
+  const isCard = metodoPago === 'Tarjeta de Crédito' || metodoPago === 'Tarjeta de Débito';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,6 +150,9 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       total: parsedTotal,
       categoria,
       moneda,
+      persona,
+      metodoPago,
+      ultimos4Digitos: isCard && ultimos4Digitos.trim() ? ultimos4Digitos.trim().slice(-4) : undefined,
       notas: notas.trim() || undefined,
       fotoRecibo,
       origen
@@ -240,6 +264,77 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Fila: Persona / Cuenta */}
+          <div>
+            <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-leather-600" />
+              ¿A quién corresponde este gasto? *
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {PERSONS.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPersona(p)}
+                  className={`py-2 px-3 text-xs font-bold rounded-sm border transition-all text-center ${
+                    persona === p
+                      ? 'bg-leather-700 text-white border-leather-800 shadow-xs'
+                      : 'bg-ledger-card border-ledger-border text-ink-700 hover:bg-ledger-rule'
+                  }`}
+                >
+                  {p === 'Pareja' ? '👫 Pareja' : p === 'Yuli' ? '🌸 Yuli' : '💼 Carlos'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Fila: Método de Pago */}
+          <div>
+            <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+              <CreditCard className="w-3.5 h-3.5 text-forest-700" />
+              Método de Pago *
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-2">
+              {PAYMENT_METHODS.map((metodo) => (
+                <button
+                  key={metodo}
+                  type="button"
+                  onClick={() => setMetodoPago(metodo)}
+                  className={`py-1.5 px-2 text-[11px] font-semibold rounded-xs border transition-colors text-center truncate ${
+                    metodoPago === metodo
+                      ? 'bg-forest-800 text-white border-forest-900 shadow-xs'
+                      : 'bg-ledger-card border-ledger-border text-ink-700 hover:bg-ledger-rule'
+                  }`}
+                >
+                  {metodo === 'Efectivo' ? '💵 Efectivo' :
+                   metodo === 'Tarjeta de Crédito' ? '💳 Crédito' :
+                   metodo === 'Tarjeta de Débito' ? '💳 Débito' : '📱 Transf.'}
+                </button>
+              ))}
+            </div>
+
+            {/* Si es tarjeta, pedir últimos 4 dígitos */}
+            {isCard && (
+              <div className="mt-2 p-2.5 bg-ledger-card border border-ledger-border rounded-sm">
+                <label className="block text-[11px] font-semibold text-ink-700 mb-1">
+                  Últimos 4 dígitos de la tarjeta (opcional)
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono text-ink-500 tracking-widest">•••• •••• ••••</span>
+                  <input
+                    type="text"
+                    maxLength={4}
+                    placeholder="1234"
+                    value={ultimos4Digitos}
+                    onChange={(e) => setUltimos4Digitos(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                    className="w-20 px-2 py-1 text-sm font-mono font-bold tracking-widest bg-ledger-paper border border-ledger-border rounded-sm text-ink-900 focus:outline-none focus:border-forest-700 text-center"
+                  />
+                  <span className="text-[11px] text-ink-500 italic">Identifica el plástico</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Fila: Fecha y Categoría */}
