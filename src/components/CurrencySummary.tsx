@@ -36,6 +36,9 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
     ? allUsdExpenses
     : allUsdExpenses.filter(e => (e.persona || 'Pareja') === selectedPerson);
 
+  const totalMXN = mxnExpenses.reduce((acc, curr) => acc + curr.total, 0);
+  const totalUSD = usdExpenses.reduce((acc, curr) => acc + curr.total, 0);
+
   const totalAllMXN = allMxnExpenses.reduce((acc, curr) => acc + curr.total, 0);
 
   // Cálculo de "Mi Parte / Lo que me toca a mí":
