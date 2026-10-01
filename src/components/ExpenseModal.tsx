@@ -25,6 +25,7 @@ interface ExpenseModalProps {
     photoUrl: string;
   } | null;
   photoOnly?: string | null;
+  userProfile?: UserProfile;
 }
 
 export const ExpenseModal: React.FC<ExpenseModalProps> = ({
@@ -33,7 +34,8 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   onSave,
   editingExpense,
   scannedData,
-  photoOnly
+  photoOnly,
+  userProfile = 'Carlos'
 }) => {
   const [comercio, setComercio] = useState('');
   const [fecha, setFecha] = useState(getTodayDateString());
@@ -272,19 +274,32 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
               <User className="w-3.5 h-3.5 text-leather-600" />
               ¿A quién corresponde este gasto? *
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              {PERSONS.map((p) => (
+            <div className={`grid gap-2 ${
+              userProfile === 'Todos' ? 'grid-cols-3' : 'grid-cols-2'
+            }`}>
+              {(userProfile === 'Carlos' 
+                ? (['Carlos', 'Pareja'] as Person[])
+                : userProfile === 'Yuli'
+                ? (['Yuli', 'Pareja'] as Person[])
+                : PERSONS
+              ).map((p) => (
                 <button
                   key={p}
                   type="button"
                   onClick={() => setPersona(p)}
                   className={`py-2 px-3 text-xs font-bold rounded-sm border transition-all text-center ${
                     persona === p
-                      ? 'bg-leather-700 text-white border-leather-800 shadow-xs'
+                      ? p === 'Pareja' 
+                        ? 'bg-forest-800 text-white border-forest-900 shadow-xs'
+                        : 'bg-leather-700 text-white border-leather-800 shadow-xs'
                       : 'bg-ledger-card border-ledger-border text-ink-700 hover:bg-ledger-rule'
                   }`}
                 >
-                  {p === 'Pareja' ? '👫 Pareja' : p === 'Yuli' ? '🌸 Yuli' : '💼 Carlos'}
+                  {p === 'Pareja' 
+                    ? '👫 Pareja (Compartido)' 
+                    : p === 'Yuli' 
+                    ? '🌸 Yuli (Privado)' 
+                    : '💼 Carlos (Privado)'}
                 </button>
               ))}
             </div>

@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { AppSettings, Expense, GeminiParsedReceipt, Person } from './types';
+import { AppSettings, Expense, GeminiParsedReceipt, Person, UserProfile } from './types';
 import { 
   getStoredExpenses, 
   saveStoredExpenses, 
   getStoredSettings, 
-  saveStoredSettings 
+  saveStoredSettings,
+  filterExpensesByProfile
 } from './services/storageService';
+import { syncParejaWithFirestore, mergeParejaExpenses } from './services/cloudSyncService';
 import { Header } from './components/Header';
 import { CurrencySummary } from './components/CurrencySummary';
 import { ExpenseList } from './components/ExpenseList';
@@ -15,6 +17,7 @@ import { ScannerModal } from './components/ScannerModal';
 import { BatchScannerModal } from './components/BatchScannerModal';
 import { ExpenseModal } from './components/ExpenseModal';
 import { SettingsModal } from './components/SettingsModal';
+import { ProfileSelectorModal } from './components/ProfileSelectorModal';
 import { ReceiptViewerModal } from './components/ReceiptViewerModal';
 import { formatMonthYear } from './utils/formatters';
 import { Camera, PlusCircle, BookMarked, ShieldCheck, Layers } from 'lucide-react';
@@ -24,11 +27,14 @@ export const App: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>(() => getStoredExpenses());
   const [settings, setSettings] = useState<AppSettings>(() => getStoredSettings());
 
+  const currentProfile: UserProfile = settings.userProfile || 'Carlos';
+
   // Filtro de mes activo y persona activa
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
   const [selectedPerson, setSelectedPerson] = useState<Person | 'ALL'>('ALL');
 
   // Estados de Modales
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [selectedFileForScan, setSelectedFileForScan] = useState<File | null>(null);
 
@@ -56,22 +62,40 @@ export const App: React.FC = () => {
     saveStoredExpenses(expenses);
   }, [expenses]);
 
+  // Sincronización automática de Pareja en la nube (Firestore) en segundo plano al iniciar
+  useEffect(() => {
+    if (settings.cloudSync?.enabled && settings.cloudSync?.firebaseProjectId) {
+      const parejaList = expenses.filter(e => (e.persona || 'Pareja') === 'Pareja');
+      syncParejaWithFirestore(parejaList, settings).then(res => {
+        if (res.success && res.remoteExpenses) {
+          setExpenses(prev => mergeParejaExpenses(prev, res.remoteExpenses!));
+        }
+      }).catch(err => console.warn('Sync background failed:', err));
+    }
+  }, [settings.cloudSync?.enabled, settings.cloudSync?.firebaseProjectId]);
+
+  // Gastos visibles estrictamente permitidos para el perfil activo en este dispositivo
+  // (Privacidad total: Carlos no ve los personales de Yuli, y viceversa)
+  const visibleExpenses = useMemo(() => {
+    return filterExpensesByProfile(expenses, currentProfile);
+  }, [expenses, currentProfile]);
+
   // Lista única de meses disponibles (YYYY-MM) ordenados descendente
   const allMonths = useMemo(() => {
     const set = new Set<string>();
-    expenses.forEach(e => {
+    visibleExpenses.forEach(e => {
       if (e.fecha && e.fecha.length >= 7) {
         set.add(e.fecha.slice(0, 7));
       }
     });
     return Array.from(set).sort((a, b) => b.localeCompare(a));
-  }, [expenses]);
+  }, [visibleExpenses]);
 
   // Gastos filtrados por el mes activo para resúmenes
   const expensesForCurrentFilter = useMemo(() => {
-    if (selectedMonth === 'ALL') return expenses;
-    return expenses.filter(e => e.fecha.startsWith(selectedMonth));
-  }, [expenses, selectedMonth]);
+    if (selectedMonth === 'ALL') return visibleExpenses;
+    return visibleExpenses.filter(e => e.fecha.startsWith(selectedMonth));
+  }, [visibleExpenses, selectedMonth]);
 
   const selectedMonthLabel = selectedMonth === 'ALL' 
     ? 'Todos los meses' 
@@ -113,7 +137,11 @@ export const App: React.FC = () => {
       id: `gasto-batch-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 6)}`,
       creadoEn: new Date().toISOString()
     }));
-    setExpenses(prev => [...newExpenses, ...prev]);
+    const nextExpenses = [...newExpenses, ...expenses];
+    setExpenses(nextExpenses);
+    if (newExpenses.some(e => (e.persona || 'Pareja') === 'Pareja')) {
+      triggerParejaCloudSync(nextExpenses);
+    }
   };
 
   // Acciones de Gasto Manual
@@ -132,21 +160,38 @@ export const App: React.FC = () => {
     setIsExpenseModalOpen(true);
   };
 
+  const triggerParejaCloudSync = (updatedExpenses: Expense[]) => {
+    if (settings.cloudSync?.enabled && settings.cloudSync?.firebaseProjectId) {
+      const parejaList = updatedExpenses.filter(e => (e.persona || 'Pareja') === 'Pareja');
+      syncParejaWithFirestore(parejaList, settings).then(res => {
+        if (res.success && res.remoteExpenses) {
+          setExpenses(prev => mergeParejaExpenses(prev, res.remoteExpenses!));
+        }
+      }).catch(err => console.warn('Sync error:', err));
+    }
+  };
+
+  const handleSelectProfile = (newProfile: UserProfile) => {
+    const updated = { ...settings, userProfile: newProfile };
+    setSettings(updated);
+    saveStoredSettings(updated);
+    setSelectedPerson('ALL');
+  };
+
   // Guardar Gasto (nuevo o editado)
   const handleSaveExpense = (data: Omit<Expense, 'id' | 'creadoEn'> & { id?: string }) => {
+    let nextExpenses: Expense[];
     if (data.id) {
       // Editar
-      setExpenses(prev =>
-        prev.map(item =>
-          item.id === data.id
-            ? {
-                ...item,
-                ...data,
-                id: item.id,
-                creadoEn: item.creadoEn
-              }
-            : item
-        )
+      nextExpenses = expenses.map(item =>
+        item.id === data.id
+          ? {
+              ...item,
+              ...data,
+              id: item.id,
+              creadoEn: item.creadoEn
+            }
+          : item
       );
     } else {
       // Crear nuevo asiento contable
@@ -155,14 +200,19 @@ export const App: React.FC = () => {
         id: `gasto-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
         creadoEn: new Date().toISOString()
       };
-      setExpenses(prev => [newExpense, ...prev]);
+      nextExpenses = [newExpense, ...expenses];
+    }
+    setExpenses(nextExpenses);
+    if ((data.persona || 'Pareja') === 'Pareja') {
+      triggerParejaCloudSync(nextExpenses);
     }
   };
 
   // Eliminar Gasto
   const handleDeleteExpense = (id: string) => {
     if (confirm('¿Deseas eliminar este asiento de gasto?')) {
-      setExpenses(prev => prev.filter(e => e.id !== id));
+      const nextExpenses = expenses.filter(e => e.id !== id);
+      setExpenses(nextExpenses);
     }
   };
 
@@ -191,6 +241,7 @@ export const App: React.FC = () => {
         onOpenBatchScanner={handleStartBatchScan}
         onOpenManualEntry={handleOpenManualEntry}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenProfileModal={() => setIsProfileModalOpen(true)}
       />
 
       {/* Cuerpo Principal */}
@@ -203,6 +254,7 @@ export const App: React.FC = () => {
             selectedMonthLabel={selectedMonthLabel}
             selectedPerson={selectedPerson}
             onSelectPerson={setSelectedPerson}
+            userProfile={currentProfile}
           />
         </section>
 
@@ -212,7 +264,7 @@ export const App: React.FC = () => {
           {/* Columna Principal: Libro Diario de Gastos (7 columnas en escritorio) */}
           <section className="lg:col-span-7 xl:col-span-8 space-y-4">
             <ExpenseList
-              expenses={expenses}
+              expenses={visibleExpenses}
               allMonths={allMonths}
               selectedMonth={selectedMonth}
               onSelectMonth={setSelectedMonth}
@@ -221,6 +273,7 @@ export const App: React.FC = () => {
               onEditExpense={handleEditExpense}
               onDeleteExpense={handleDeleteExpense}
               onViewReceipt={(url, merchant) => setReceiptToView({ url, merchant })}
+              userProfile={currentProfile}
             />
           </section>
 
@@ -366,7 +419,8 @@ export const App: React.FC = () => {
         isOpen={isBatchScannerOpen}
         files={batchFilesForScan}
         settings={settings}
-        defaultPerson={selectedPerson !== 'ALL' ? selectedPerson : 'Pareja'}
+        userProfile={currentProfile}
+        defaultPerson={selectedPerson !== 'ALL' && selectedPerson !== 'Carlos' && selectedPerson !== 'Yuli' ? selectedPerson : 'Pareja'}
         onClose={() => {
           setIsBatchScannerOpen(false);
           setBatchFilesForScan([]);
@@ -376,6 +430,7 @@ export const App: React.FC = () => {
 
       <ExpenseModal
         isOpen={isExpenseModalOpen}
+        userProfile={currentProfile}
         onClose={() => {
           setIsExpenseModalOpen(false);
           setEditingExpense(null);
@@ -396,6 +451,14 @@ export const App: React.FC = () => {
         expenses={expenses}
         onImportExpenses={handleImportExpenses}
         onClearExpenses={handleClearExpenses}
+        onExpensesUpdated={setExpenses}
+      />
+
+      <ProfileSelectorModal
+        isOpen={isProfileModalOpen}
+        currentProfile={currentProfile}
+        onClose={() => setIsProfileModalOpen(false)}
+        onSelectProfile={handleSelectProfile}
       />
 
       <ReceiptViewerModal

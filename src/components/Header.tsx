@@ -8,6 +8,7 @@ interface HeaderProps {
   onOpenBatchScanner: (files: File[]) => void;
   onOpenManualEntry: () => void;
   onOpenSettings: () => void;
+  onOpenProfileModal: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -15,12 +16,14 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenScanner,
   onOpenBatchScanner,
   onOpenManualEntry,
-  onOpenSettings
+  onOpenSettings,
+  onOpenProfileModal
 }) => {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const hasApiKey = Boolean(settings.geminiApiKey && settings.geminiApiKey.trim().length > 5);
+  const currentProfile = settings.userProfile || 'Carlos';
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -40,17 +43,30 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3.5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           
-          {/* Título de la app con estética de libro contable */}
+          {/* Título de la app con estética de libro contable y Perfil Activo */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-sm bg-forest-800 text-ledger-bg flex items-center justify-center border border-forest-900 shadow-sm">
                 <BookOpen className="w-5 h-5 text-[#E3D9C3]" />
               </div>
               <div>
-                <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-ink-900 leading-none">
-                  Mis Cuentas
-                </h1>
-                <p className="text-xs sm:text-sm text-ink-500 font-sans tracking-wide mt-0.5">
+                <div className="flex items-center gap-2">
+                  <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-ink-900 leading-none">
+                    Mis Cuentas
+                  </h1>
+                  
+                  {/* Badge de Perfil y Nube */}
+                  <button
+                    onClick={onOpenProfileModal}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full bg-ledger-card border border-ledger-border hover:border-forest-700 hover:bg-ledger-rule text-ink-800 transition-colors shadow-xs"
+                    title="Cambiar perfil en este dispositivo (Carlos / Yuli)"
+                  >
+                    <span>{currentProfile === 'Carlos' ? '💼' : currentProfile === 'Yuli' ? '🌸' : '👥'}</span>
+                    <span className="font-semibold">Perfil: {currentProfile}</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-forest-600 animate-pulse" title="Sincronización Pareja activa" />
+                  </button>
+                </div>
+                <p className="text-xs sm:text-sm text-ink-500 font-sans tracking-wide mt-1">
                   Libro de gastos & lector de tickets con IA
                 </p>
               </div>

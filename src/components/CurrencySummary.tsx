@@ -1,20 +1,22 @@
 import React from 'react';
 import { formatMoney } from '../utils/formatters';
-import { Expense, Person, PERSONS, PaymentMethod, PAYMENT_METHODS } from '../types';
-import { Coins, Receipt, User, CreditCard, Wallet, ArrowRightLeft } from 'lucide-react';
+import { Expense, Person, PERSONS, PaymentMethod, PAYMENT_METHODS, UserProfile } from '../types';
+import { Coins, Receipt, User, CreditCard, Wallet, ArrowRightLeft, Cloud, Shield } from 'lucide-react';
 
 interface CurrencySummaryProps {
   expenses: Expense[];
   selectedMonthLabel: string;
   selectedPerson: Person | 'ALL';
   onSelectPerson: (person: Person | 'ALL') => void;
+  userProfile: UserProfile;
 }
 
 export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
   expenses,
   selectedMonthLabel,
   selectedPerson,
-  onSelectPerson
+  onSelectPerson,
+  userProfile
 }) => {
   const mxnExpenses = expenses.filter(e => e.moneda === 'MXN');
   const usdExpenses = expenses.filter(e => e.moneda === 'USD');
@@ -22,8 +24,15 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
   const totalMXN = mxnExpenses.reduce((acc, curr) => acc + curr.total, 0);
   const totalUSD = usdExpenses.reduce((acc, curr) => acc + curr.total, 0);
 
+  // Determinar qué personas están disponibles según el perfil activo
+  const availablePersons: Person[] = userProfile === 'Carlos'
+    ? ['Carlos', 'Pareja']
+    : userProfile === 'Yuli'
+    ? ['Yuli', 'Pareja']
+    : ['Carlos', 'Yuli', 'Pareja'];
+
   // Totales por Persona (en MXN)
-  const personTotals = PERSONS.map(p => {
+  const personTotals = availablePersons.map(p => {
     const list = mxnExpenses.filter(e => (e.persona || 'Pareja') === p);
     const sum = list.reduce((acc, e) => acc + e.total, 0);
     return {
@@ -48,19 +57,28 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
   return (
     <div className="space-y-4">
       
-      {/* Selector de Cuentas por Persona (Yuli / Carlos / Pareja) */}
+      {/* Selector de Cuentas según el Perfil */}
       <div className="bg-ledger-paper border border-ledger-border rounded-sm p-3 shadow-ledger-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2 pb-2 border-b border-ledger-rule">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-ink-800 uppercase tracking-wider">
             <User className="w-3.5 h-3.5 text-leather-700" />
-            <span>Cuentas por Persona</span>
+            <span>
+              {userProfile === 'Carlos' 
+                ? 'Libreta de Carlos & Pareja' 
+                : userProfile === 'Yuli' 
+                ? 'Libreta de Yuli & Pareja' 
+                : 'Cuentas Familiares'}
+            </span>
           </div>
-          <span className="text-[11px] text-ink-500 font-sans">
-            Filtra para ver los gastos de cada quien o los compartidos
+          <span className="text-[11px] text-ink-500 font-sans flex items-center gap-1">
+            <Shield className="w-3 h-3 text-forest-700" />
+            Tus gastos personales son privados; los de Pareja están sincronizados
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className={`grid gap-2 ${
+          availablePersons.length === 2 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'
+        }`}>
           {/* Botón Todos */}
           <button
             onClick={() => onSelectPerson('ALL')}
@@ -71,7 +89,9 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold">👥 Todas las Cuentas</span>
+              <span className="text-xs font-bold">
+                {userProfile === 'Todos' ? '👥 Todas las Cuentas' : '📊 Todos mis gastos'}
+              </span>
               <span className={`text-[10px] px-1.5 py-0.5 rounded-xs font-mono font-bold ${
                 selectedPerson === 'ALL' ? 'bg-forest-900 text-forest-100' : 'bg-ledger-rule text-ink-700'
               }`}>
@@ -85,24 +105,32 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
             </p>
           </button>
 
-          {/* Botones individuales */}
+          {/* Botones individuales filtrados por privacidad */}
           {personTotals.map(({ person, total, count, percentage }) => {
             const isSelected = selectedPerson === person;
-            const emoji = person === 'Yuli' ? '🌸' : person === 'Carlos' ? '💼' : '👫';
+            const isPareja = person === 'Pareja';
+            const label = isPareja 
+              ? '👫 Pareja (Nube)' 
+              : person === 'Carlos' 
+              ? '💼 Carlos (Privado)' 
+              : '🌸 Yuli (Privado)';
+            
             return (
               <button
                 key={person}
                 onClick={() => onSelectPerson(person)}
                 className={`p-2.5 rounded-sm border text-left transition-all ${
                   isSelected
-                    ? 'bg-leather-700 text-[#FAF6ED] border-leather-800 shadow-sm'
+                    ? isPareja 
+                      ? 'bg-forest-800 text-[#FAF6ED] border-forest-900 shadow-sm'
+                      : 'bg-leather-700 text-[#FAF6ED] border-leather-800 shadow-sm'
                     : 'bg-ledger-card border-ledger-border text-ink-800 hover:bg-ledger-rule'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold">{emoji} {person}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-xs font-mono font-bold ${
-                    isSelected ? 'bg-leather-800 text-leather-100' : 'bg-ledger-rule text-ink-700'
+                  <span className="text-xs font-bold truncate">{label}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-xs font-mono font-bold shrink-0 ${
+                    isSelected ? 'bg-black/20 text-white' : 'bg-ledger-rule text-ink-700'
                   }`}>
                     {count}
                   </span>
@@ -112,11 +140,11 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
                 }`}>
                   {formatMoney(total, 'MXN')}
                 </p>
-                {totalMXN > 0 && (
-                  <p className={`text-[10px] mt-0.5 ${isSelected ? 'text-leather-200' : 'text-ink-500'}`}>
-                    {percentage.toFixed(0)}% del total
-                  </p>
-                )}
+                <p className={`text-[10px] mt-0.5 truncate ${isSelected ? 'text-white/80' : 'text-ink-500'}`}>
+                  {isPareja 
+                    ? (userProfile === 'Carlos' ? 'Compartido con Yuli' : userProfile === 'Yuli' ? 'Compartido con Carlos' : 'Gastos del hogar')
+                    : `${percentage.toFixed(0)}% de tus gastos`}
+                </p>
               </button>
             );
           })}

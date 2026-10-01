@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Expense, ExpenseCategory, Person, PERSONS, PaymentMethod, PAYMENT_METHODS } from '../types';
+import { Expense, ExpenseCategory, Person, PERSONS, PaymentMethod, PAYMENT_METHODS, UserProfile } from '../types';
 import { formatMoney, formatDateHuman, CATEGORY_BADGES, formatMonthYear } from '../utils/formatters';
 import { 
   Calendar, 
@@ -25,6 +25,7 @@ interface ExpenseListProps {
   onEditExpense: (expense: Expense) => void;
   onDeleteExpense: (id: string) => void;
   onViewReceipt: (photoUrl: string, merchant: string) => void;
+  userProfile: UserProfile;
 }
 
 export const ExpenseList: React.FC<ExpenseListProps> = ({
@@ -36,7 +37,8 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
   onSelectPerson,
   onEditExpense,
   onDeleteExpense,
-  onViewReceipt
+  onViewReceipt,
+  userProfile
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -113,7 +115,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
             </span>
           </div>
 
-          {/* Selector de persona en la lista */}
+          {/* Selector de persona en la lista según el perfil */}
           <div className="flex items-center gap-1 bg-ledger-card p-1 rounded-sm border border-ledger-border text-xs">
             <button
               onClick={() => onSelectPerson('ALL')}
@@ -123,15 +125,20 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
                   : 'text-ink-600 hover:text-ink-900'
               }`}
             >
-              Todos
+              {userProfile === 'Todos' ? 'Todos' : 'Todos mis gastos'}
             </button>
-            {PERSONS.map(p => (
+            {(userProfile === 'Carlos' 
+              ? (['Carlos', 'Pareja'] as Person[]) 
+              : userProfile === 'Yuli' 
+              ? (['Yuli', 'Pareja'] as Person[]) 
+              : PERSONS
+            ).map(p => (
               <button
                 key={p}
                 onClick={() => onSelectPerson(p)}
                 className={`px-2 py-1 rounded-xs font-medium transition-colors ${
                   selectedPerson === p
-                    ? 'bg-leather-700 text-white shadow-xs'
+                    ? p === 'Pareja' ? 'bg-forest-800 text-white shadow-xs' : 'bg-leather-700 text-white shadow-xs'
                     : 'text-ink-600 hover:text-ink-900'
                 }`}
               >

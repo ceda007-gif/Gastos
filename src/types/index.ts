@@ -72,9 +72,22 @@ export interface GeminiParsedReceipt {
   ultimos4Digitos?: string;
 }
 
+export type UserProfile = 'Carlos' | 'Yuli' | 'Todos';
+
+export interface CloudSyncConfig {
+  enabled: boolean;
+  syncCode: string; // Código compartido ej: "FAMILIA-CY"
+  firebaseProjectId?: string; // ID de proyecto Firebase opcional
+  lastSyncTime?: string; // ISO string
+  syncStatus?: 'idle' | 'syncing' | 'synced' | 'error';
+  errorMessage?: string;
+}
+
 export interface AppSettings {
   geminiApiKey: string;
   geminiModel: string;
+  userProfile: UserProfile;
+  cloudSync?: CloudSyncConfig;
 }
 
 export interface MonthlySummary {

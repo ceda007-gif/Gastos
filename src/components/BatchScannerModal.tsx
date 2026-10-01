@@ -9,7 +9,8 @@ import {
   PERSONS, 
   PaymentMethod, 
   PAYMENT_METHODS, 
-  Expense 
+  Expense,
+  UserProfile
 } from '../types';
 import { optimizeImage, parseReceiptWithGemini } from '../services/geminiService';
 import { formatMoney } from '../utils/formatters';
@@ -52,6 +53,7 @@ interface BatchScannerModalProps {
   onClose: () => void;
   onSaveBatch: (expenses: Omit<Expense, 'id' | 'creadoEn'>[]) => void;
   defaultPerson?: Person;
+  userProfile?: UserProfile;
 }
 
 export const BatchScannerModal: React.FC<BatchScannerModalProps> = ({
@@ -60,7 +62,8 @@ export const BatchScannerModal: React.FC<BatchScannerModalProps> = ({
   isOpen,
   onClose,
   onSaveBatch,
-  defaultPerson = 'Pareja'
+  defaultPerson = 'Pareja',
+  userProfile = 'Carlos'
 }) => {
   const [items, setItems] = useState<BatchItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -261,14 +264,19 @@ export const BatchScannerModal: React.FC<BatchScannerModalProps> = ({
               Asignar todos a:
             </span>
             <div className="flex items-center gap-1.5">
-              {PERSONS.map(p => (
+              {(userProfile === 'Carlos' 
+                ? (['Carlos', 'Pareja'] as Person[]) 
+                : userProfile === 'Yuli' 
+                ? (['Yuli', 'Pareja'] as Person[]) 
+                : PERSONS
+              ).map(p => (
                 <button
                   key={p}
                   type="button"
                   onClick={() => handleSetAllPerson(p)}
                   className="px-2.5 py-1 rounded-xs border border-ledger-border bg-ledger-paper hover:bg-ledger-rule font-medium text-ink-800 transition-colors"
                 >
-                  {p}
+                  {p === 'Pareja' ? '👫 Pareja' : p === 'Carlos' ? '💼 Carlos' : '🌸 Yuli'}
                 </button>
               ))}
             </div>
@@ -380,7 +388,7 @@ export const BatchScannerModal: React.FC<BatchScannerModalProps> = ({
                     </select>
                   </div>
 
-                  {/* Persona (Yuli / Carlos / Pareja) */}
+                  {/* Persona */}
                   <div className="lg:col-span-1">
                     <label className="block text-[10px] uppercase tracking-wider text-ink-500 font-semibold mb-0.5">
                       Persona
@@ -390,7 +398,16 @@ export const BatchScannerModal: React.FC<BatchScannerModalProps> = ({
                       onChange={(e) => handleUpdateItem(item.id, { persona: e.target.value as Person })}
                       className="w-full px-1 py-1 text-xs bg-ledger-paper border border-ledger-border rounded-xs font-medium text-ink-900 cursor-pointer"
                     >
-                      {PERSONS.map(p => <option key={p} value={p}>{p}</option>)}
+                      {(userProfile === 'Carlos' 
+                        ? (['Carlos', 'Pareja'] as Person[]) 
+                        : userProfile === 'Yuli' 
+                        ? (['Yuli', 'Pareja'] as Person[]) 
+                        : PERSONS
+                      ).map(p => (
+                        <option key={p} value={p}>
+                          {p === 'Pareja' ? '👫 Pareja' : p === 'Carlos' ? '💼 Carlos' : '🌸 Yuli'}
+                        </option>
+                      ))}
                     </select>
                   </div>
 

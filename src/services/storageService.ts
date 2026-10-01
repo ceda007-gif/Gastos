@@ -1,4 +1,4 @@
-import { AppSettings, Expense } from '../types';
+import { AppSettings, Expense, UserProfile } from '../types';
 
 const STORAGE_KEY_EXPENSES = 'mis_cuentas_gastos_v1';
 const STORAGE_KEY_SETTINGS = 'mis_cuentas_ajustes_v1';
@@ -6,6 +6,12 @@ const STORAGE_KEY_SETTINGS = 'mis_cuentas_ajustes_v1';
 const INITIAL_SETTINGS: AppSettings = {
   geminiApiKey: '',
   geminiModel: 'gemini-3.8-flash',
+  userProfile: 'Carlos',
+  cloudSync: {
+    enabled: false,
+    syncCode: 'FAMILIA-CY',
+    syncStatus: 'idle'
+  }
 };
 
 const SAMPLE_EXPENSES: Expense[] = [
@@ -178,11 +184,41 @@ export function exportExpensesToCSV(expenses: Expense[]): void {
   URL.revokeObjectURL(url);
 }
 
+export function filterExpensesByProfile(expenses: Expense[], profile: UserProfile): Expense[] {
+  if (profile === 'Todos') return expenses;
+  if (profile === 'Carlos') {
+    // Carlos solo ve sus propios gastos personales y los de Pareja
+    return expenses.filter(e => {
+      const p = e.persona || 'Pareja';
+      return p === 'Carlos' || p === 'Pareja';
+    });
+  }
+  if (profile === 'Yuli') {
+    // Yuli solo ve sus propios gastos personales y los de Pareja
+    return expenses.filter(e => {
+      const p = e.persona || 'Pareja';
+      return p === 'Yuli' || p === 'Pareja';
+    });
+  }
+  return expenses;
+}
+
 export function exportExpensesToJSON(expenses: Expense[]): void {
   const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(expenses, null, 2));
   const link = document.createElement('a');
   link.setAttribute('href', dataStr);
   link.setAttribute('download', `mis_cuentas_respaldo_${new Date().toISOString().slice(0, 10)}.json`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+export function exportParejaExpensesToJSON(expenses: Expense[]): void {
+  const parejaExpenses = expenses.filter(e => (e.persona || 'Pareja') === 'Pareja');
+  const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(parejaExpenses, null, 2));
+  const link = document.createElement('a');
+  link.setAttribute('href', dataStr);
+  link.setAttribute('download', `mis_cuentas_pareja_compartido_${new Date().toISOString().slice(0, 10)}.json`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

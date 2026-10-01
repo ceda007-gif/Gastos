@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { AppSettings, Expense } from '../types';
+import { AppSettings, Expense, UserProfile } from '../types';
 import { 
   X, 
   Key, 
@@ -13,10 +13,15 @@ import {
   Cpu, 
   CheckCircle2, 
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  User,
+  Cloud,
+  Share2,
+  ShieldCheck
 } from 'lucide-react';
-import { exportExpensesToCSV, exportExpensesToJSON } from '../services/storageService';
+import { exportExpensesToCSV, exportExpensesToJSON, exportParejaExpensesToJSON } from '../services/storageService';
 import { getAvailableGeminiModels } from '../services/geminiService';
+import { syncParejaWithFirestore, mergeParejaExpenses } from '../services/cloudSyncService';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -26,6 +31,7 @@ interface SettingsModalProps {
   expenses: Expense[];
   onImportExpenses: (imported: Expense[]) => void;
   onClearExpenses: () => void;
+  onExpensesUpdated?: (newExpenses: Expense[]) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -35,16 +41,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onSaveSettings,
   expenses,
   onImportExpenses,
-  onClearExpenses
+  onClearExpenses,
+  onExpensesUpdated
 }) => {
   const [apiKey, setApiKey] = useState(settings.geminiApiKey);
   const [model, setModel] = useState(settings.geminiModel || 'gemini-3.8-flash');
+  const [userProfile, setUserProfile] = useState<UserProfile>(settings.userProfile || 'Carlos');
+  const [syncCode, setSyncCode] = useState(settings.cloudSync?.syncCode || 'FAMILIA-CY');
+  const [firebaseProjectId, setFirebaseProjectId] = useState(settings.cloudSync?.firebaseProjectId || '');
+  const [cloudSyncEnabled, setCloudSyncEnabled] = useState(Boolean(settings.cloudSync?.enabled));
+  const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [detectedModels, setDetectedModels] = useState<string[]>([]);
   const [isDetecting, setIsDetecting] = useState(false);
   const [detectStatus, setDetectStatus] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const parejaFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDetectModels = async () => {
     if (!apiKey.trim()) {
@@ -77,13 +91,45 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     e.preventDefault();
     onSaveSettings({
       geminiApiKey: apiKey.trim(),
-      geminiModel: model.trim()
+      geminiModel: model.trim(),
+      userProfile,
+      cloudSync: {
+        enabled: cloudSyncEnabled,
+        syncCode: syncCode.trim() || 'FAMILIA-CY',
+        firebaseProjectId: firebaseProjectId.trim(),
+        lastSyncTime: settings.cloudSync?.lastSyncTime,
+        syncStatus: 'idle'
+      }
     });
     setIsSaved(true);
     setTimeout(() => {
       setIsSaved(false);
       onClose();
     }, 600);
+  };
+
+  const handleSyncParejaNow = async () => {
+    if (!firebaseProjectId.trim()) {
+      setSyncStatusMsg('Ingresa tu Project ID de Firebase para conectar la nube.');
+      return;
+    }
+    setIsSyncing(true);
+    setSyncStatusMsg('Sincronizando gastos de Pareja en Google Firestore...');
+    const parejaList = expenses.filter(e => (e.persona || 'Pareja') === 'Pareja');
+    const result = await syncParejaWithFirestore(parejaList, {
+      ...settings,
+      cloudSync: {
+        enabled: true,
+        syncCode: syncCode.trim() || 'FAMILIA-CY',
+        firebaseProjectId: firebaseProjectId.trim()
+      }
+    });
+    setIsSyncing(false);
+    setSyncStatusMsg(result.message);
+    if (result.success && result.remoteExpenses && onExpensesUpdated) {
+      const merged = mergeParejaExpenses(expenses, result.remoteExpenses);
+      onExpensesUpdated(merged);
+    }
   };
 
   const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,6 +149,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         }
       } catch (err) {
         alert('Error al leer el archivo de respaldo JSON.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImportParejaOnly = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const parsed = JSON.parse(content);
+        if (Array.isArray(parsed)) {
+          const merged = mergeParejaExpenses(expenses, parsed);
+          if (onExpensesUpdated) onExpensesUpdated(merged);
+          alert(`Se fusionaron ${parsed.length} gastos de Pareja con éxito. Tus gastos personales no fueron alterados.`);
+        } else {
+          alert('El archivo no tiene formato válido.');
+        }
+      } catch (err) {
+        alert('Error al leer el archivo.');
       }
     };
     reader.readAsText(file);
@@ -137,6 +206,59 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Contenido */}
         <form onSubmit={handleSave} className="p-4 sm:p-5 overflow-y-auto space-y-5">
           
+          {/* Sección: Perfil de este Dispositivo */}
+          <div className="space-y-2.5 pb-3 border-b border-ledger-rule">
+            <label className="block text-xs font-semibold text-ink-800 uppercase tracking-wider flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-leather-700" />
+              <span>Perfil de este Dispositivo</span>
+            </label>
+            <p className="text-[11px] text-ink-600">
+              Define quién utiliza este celular o computadora para mantener la privacidad de los gastos personales:
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setUserProfile('Carlos')}
+                className={`py-2 px-3 text-xs font-bold rounded-sm border transition-all text-center ${
+                  userProfile === 'Carlos'
+                    ? 'bg-forest-800 text-white border-forest-900 shadow-xs'
+                    : 'bg-ledger-card border-ledger-border text-ink-700 hover:bg-ledger-rule'
+                }`}
+              >
+                💼 Carlos
+              </button>
+              <button
+                type="button"
+                onClick={() => setUserProfile('Yuli')}
+                className={`py-2 px-3 text-xs font-bold rounded-sm border transition-all text-center ${
+                  userProfile === 'Yuli'
+                    ? 'bg-leather-700 text-white border-leather-800 shadow-xs'
+                    : 'bg-ledger-card border-ledger-border text-ink-700 hover:bg-ledger-rule'
+                }`}
+              >
+                🌸 Yuli
+              </button>
+              <button
+                type="button"
+                onClick={() => setUserProfile('Todos')}
+                className={`py-2 px-3 text-xs font-bold rounded-sm border transition-all text-center ${
+                  userProfile === 'Todos'
+                    ? 'bg-ink-800 text-white border-ink-900 shadow-xs'
+                    : 'bg-ledger-card border-ledger-border text-ink-700 hover:bg-ledger-rule'
+                }`}
+              >
+                👥 Ambos
+              </button>
+            </div>
+            <p className="text-[10px] text-ink-500 italic">
+              {userProfile === 'Carlos' 
+                ? 'Solo verás tus gastos personales de Carlos y los gastos compartidos de Pareja. Los de Yuli quedan privados.' 
+                : userProfile === 'Yuli' 
+                ? 'Solo verás tus gastos personales de Yuli y los gastos compartidos de Pareja. Los de Carlos quedan privados.' 
+                : 'Modo sin restricciones: muestra todos los registros de todos.'}
+            </p>
+          </div>
+
           {/* Sección: Clave de Gemini */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -231,6 +353,117 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <p className="text-[11px] text-ink-500">
               💡 <strong>Nota sobre versiones:</strong> Google retiró las versiones antiguas 1.5 y 2.0 en favor de la generación actual <strong>Gemini 3</strong> y 2.5.
             </p>
+          </div>
+
+          {/* Sección: Sincronización en la Nube (Pareja) */}
+          <div className="space-y-3 pt-2 border-t border-ledger-rule">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold text-ink-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Cloud className="w-3.5 h-3.5 text-forest-700" />
+                <span>Sincronización de Pareja (Google Firestore)</span>
+              </label>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={cloudSyncEnabled}
+                  onChange={(e) => setCloudSyncEnabled(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-ledger-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-forest-800"></div>
+              </label>
+            </div>
+
+            <p className="text-[11px] text-ink-600 leading-relaxed">
+              Permite que los gastos marcados como <strong>Pareja</strong> se sincronicen en vivo entre el teléfono de Carlos y el de Yuli.
+            </p>
+
+            {cloudSyncEnabled && (
+              <div className="space-y-2.5 p-3 bg-forest-50/60 border border-forest-200 rounded-sm">
+                <div>
+                  <label className="block text-[11px] font-semibold text-ink-700 mb-0.5">
+                    Firebase Project ID
+                  </label>
+                  <input
+                    type="text"
+                    value={firebaseProjectId}
+                    onChange={(e) => setFirebaseProjectId(e.target.value)}
+                    placeholder="ej. mis-gastos-pareja-12345"
+                    className="w-full px-2.5 py-1.5 text-xs font-mono bg-ledger-paper border border-ledger-border rounded-xs text-ink-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-ink-700 mb-0.5">
+                    Código de Vinculación Familiar (PIN)
+                  </label>
+                  <input
+                    type="text"
+                    value={syncCode}
+                    onChange={(e) => setSyncCode(e.target.value)}
+                    placeholder="FAMILIA-CY"
+                    className="w-full px-2.5 py-1.5 text-xs font-mono bg-ledger-paper border border-ledger-border rounded-xs uppercase tracking-wider font-bold text-ink-900"
+                  />
+                  <p className="text-[10px] text-ink-500 mt-0.5">Ambos celulares deben tener el mismo código.</p>
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <button
+                    type="button"
+                    onClick={handleSyncParejaNow}
+                    disabled={isSyncing}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xs bg-forest-800 text-white hover:bg-forest-900 disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+                    <span>{isSyncing ? 'Sincronizando...' : 'Sincronizar Pareja Ahora'}</span>
+                  </button>
+
+                  <a
+                    href="https://console.firebase.google.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] text-forest-700 hover:underline flex items-center gap-1 font-medium"
+                  >
+                    <span>Consola Firebase</span>
+                    <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
+                </div>
+
+                {syncStatusMsg && (
+                  <p className={`text-[11px] font-medium ${syncStatusMsg.includes('exitosa') ? 'text-forest-800' : 'text-leather-800'}`}>
+                    {syncStatusMsg}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Alternativa sin nube directa: Compartir archivo de Pareja */}
+            <div className="pt-1 flex flex-wrap items-center justify-between gap-2 border-t border-ledger-rule/60">
+              <button
+                type="button"
+                onClick={() => exportParejaExpensesToJSON(expenses)}
+                className="flex items-center gap-1 text-xs text-leather-800 hover:underline font-medium"
+                title="Descarga solo los gastos de Pareja para enviarlos por WhatsApp"
+              >
+                <Share2 className="w-3.5 h-3.5 text-leather-700" />
+                <span>Exportar solo gastos de Pareja</span>
+              </button>
+
+              <input
+                ref={parejaFileInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleImportParejaOnly}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => parejaFileInputRef.current?.click()}
+                className="flex items-center gap-1 text-xs text-forest-800 hover:underline font-medium"
+              >
+                <Upload className="w-3.5 h-3.5 text-forest-700" />
+                <span>Fusionar archivo de Pareja</span>
+              </button>
+            </div>
           </div>
 
           {/* Sección: Respaldos y Exportación */}
