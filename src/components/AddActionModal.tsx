@@ -36,7 +36,7 @@ export const AddActionModal: React.FC<AddActionModalProps> = ({
 
   const handleGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const files = Array.from(e.target.files);
+      const files = Array.from(e.target.files).slice(0, 3); // Máximo 3 comprobantes
       e.target.value = '';
       onClose();
       if (files.length === 1) {
