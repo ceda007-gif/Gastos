@@ -48,8 +48,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [model, setModel] = useState(settings.geminiModel || 'gemini-3.8-flash');
   const [userProfile, setUserProfile] = useState<UserProfile>(settings.userProfile || 'Carlos');
   const [syncCode, setSyncCode] = useState(settings.cloudSync?.syncCode || 'FAMILIA-CY');
-  const [firebaseProjectId, setFirebaseProjectId] = useState(settings.cloudSync?.firebaseProjectId || '');
-  const [cloudSyncEnabled, setCloudSyncEnabled] = useState(Boolean(settings.cloudSync?.enabled));
+  const [firebaseProjectId, setFirebaseProjectId] = useState(settings.cloudSync?.firebaseProjectId || 'gastos-9bdbb');
+  const [cloudSyncEnabled, setCloudSyncEnabled] = useState(settings.cloudSync?.enabled !== undefined ? settings.cloudSync.enabled : true);
   const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showKey, setShowKey] = useState(false);
@@ -59,6 +59,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [detectStatus, setDetectStatus] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const parejaFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Mantener los valores sincronizados cuando se abre el modal
+  React.useEffect(() => {
+    if (isOpen) {
+      setApiKey(settings.geminiApiKey || '');
+      setModel(settings.geminiModel || 'gemini-3.8-flash');
+      setUserProfile(settings.userProfile || 'Carlos');
+      setSyncCode(settings.cloudSync?.syncCode || 'FAMILIA-CY');
+      setFirebaseProjectId(settings.cloudSync?.firebaseProjectId || 'gastos-9bdbb');
+      setCloudSyncEnabled(settings.cloudSync?.enabled !== undefined ? settings.cloudSync.enabled : true);
+    }
+  }, [isOpen, settings]);
 
   const handleDetectModels = async () => {
     if (!apiKey.trim()) {
