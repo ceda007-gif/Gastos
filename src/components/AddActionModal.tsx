@@ -152,7 +152,7 @@ export const AddActionModal: React.FC<AddActionModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-ink-600 mt-0.5 leading-snug">
-                Selecciona 1 o varios comprobantes guardados en tu galería.
+                Selecciona 1 a 3 comprobantes de tu galería.
               </p>
             </div>
           </button>
