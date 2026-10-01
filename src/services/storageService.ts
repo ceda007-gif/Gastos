@@ -8,8 +8,9 @@ const INITIAL_SETTINGS: AppSettings = {
   geminiModel: 'gemini-3.8-flash',
   userProfile: 'Carlos',
   cloudSync: {
-    enabled: false,
+    enabled: true,
     syncCode: 'FAMILIA-CY',
+    firebaseProjectId: 'gastos-9bdbb',
     syncStatus: 'idle'
   }
 };
@@ -140,7 +141,14 @@ export function getStoredSettings(): AppSettings {
     const parsed = JSON.parse(raw);
     return {
       ...INITIAL_SETTINGS,
-      ...parsed
+      ...parsed,
+      cloudSync: {
+        ...INITIAL_SETTINGS.cloudSync,
+        ...(parsed.cloudSync || {}),
+        firebaseProjectId: parsed.cloudSync?.firebaseProjectId?.trim() || 'gastos-9bdbb',
+        enabled: parsed.cloudSync?.enabled !== undefined ? parsed.cloudSync.enabled : true,
+        syncCode: parsed.cloudSync?.syncCode?.trim() || 'FAMILIA-CY'
+      }
     };
   } catch (error) {
     console.error('Error al leer configuración de localStorage:', error);
