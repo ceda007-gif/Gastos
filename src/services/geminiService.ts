@@ -226,10 +226,12 @@ export async function parseReceiptWithGemini(
     ...candidateFallbacks.filter(m => m !== primaryModel)
   ];
 
+  const todayStr = new Date().toISOString().slice(0, 10);
   const systemPrompt = `Eres un asistente contable experto en digitalización de comprobantes, recibos y tickets de compra.
 Analiza con máxima precisión la imagen del ticket proporcionada y extrae los siguientes datos:
 1. "comercio": Nombre comercial de la tienda, negocio, restaurante o proveedor (ej. "OXXO", "Walmart", "Gasolinera Pemex", "Uber", "CFE").
-2. "fecha": Fecha de la compra o emisión en formato EXACTO "YYYY-MM-DD". Si el año no es visible, usa el año actual (${new Date().getFullYear()}). Si no hay fecha legible, usa la fecha de hoy.
+2. "fecha": Fecha de la compra o emisión en formato EXACTO "YYYY-MM-DD".
+   - REGLA CRÍTICA DE FECHA: Si el comprobante NO tiene fecha impresa, o la fecha es ilegible, incompleta, o no estás 100% seguro de ella, DEBES USAR OBLIGATORIAMENTE LA FECHA DE HOY: "${todayStr}". ¡NO inventes meses pasados ni adivines fechas!
 3. "total": Monto final total pagado como número flotante (ej. 145.50). Si hay propina o impuestos incluidos en el gran total pagado, toma el valor final más alto que represente el cargo total.
 4. "categoria": Debe ser EXACTAMENTE UNA de las siguientes opciones válidas:
 ${EXPENSE_CATEGORIES.map(c => `   - "${c}"`).join('\n')}
