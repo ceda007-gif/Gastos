@@ -36,10 +36,21 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
     ? allUsdExpenses
     : allUsdExpenses.filter(e => (e.persona || 'Pareja') === selectedPerson);
 
-  const totalMXN = mxnExpenses.reduce((acc, curr) => acc + curr.total, 0);
-  const totalUSD = usdExpenses.reduce((acc, curr) => acc + curr.total, 0);
-
   const totalAllMXN = allMxnExpenses.reduce((acc, curr) => acc + curr.total, 0);
+
+  // Cálculo de "Mi Parte / Lo que me toca a mí":
+  // Mis Gastos Personales (Carlos o Yuli) + (Gastos de Pareja / 2)
+  const myPersonalMxnTotal = allMxnExpenses
+    .filter(e => (e.persona || 'Pareja') === userProfile)
+    .reduce((acc, e) => acc + e.total, 0);
+
+  const parejaMxnTotal = allMxnExpenses
+    .filter(e => (e.persona || 'Pareja') === 'Pareja')
+    .reduce((acc, e) => acc + e.total, 0);
+
+  const myShareMXN = userProfile === 'Todos'
+    ? totalAllMXN
+    : myPersonalMxnTotal + (parejaMxnTotal / 2);
 
   // Determinar qué personas están disponibles según el perfil activo
   const availablePersons: Person[] = userProfile === 'Carlos'
@@ -113,7 +124,7 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
         <div className={`grid gap-2 ${
           availablePersons.length === 2 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'
         }`}>
-          {/* Botón Todos */}
+          {/* Botón Todos mis gastos (Mis Gastos Personales + 50% de Pareja) */}
           <button
             onClick={() => onSelectPerson('ALL')}
             className={`p-2.5 rounded-sm border text-left transition-all ${
@@ -135,8 +146,15 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
             <p className={`text-base font-serif font-bold mt-1 ${
               selectedPerson === 'ALL' ? 'text-white' : 'text-forest-900'
             }`}>
-              {formatMoney(totalAllMXN, 'MXN')}
+              {formatMoney(myShareMXN, 'MXN')}
             </p>
+            {userProfile !== 'Todos' && (
+              <p className={`text-[10px] mt-0.5 truncate ${
+                selectedPerson === 'ALL' ? 'text-white/80' : 'text-ink-500'
+              }`}>
+                {userProfile} + 50% Pareja
+              </p>
+            )}
           </button>
 
           {/* Botones individuales limpios (sin Privado ni Nube) */}
@@ -212,10 +230,12 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-4">
             <div>
               <p className="text-xs uppercase tracking-wider text-ink-500 font-sans">
-                Total Acumulado
+                {selectedPerson === 'ALL' && userProfile !== 'Todos'
+                  ? `Total que te corresponde (${userProfile} + 50% Pareja)`
+                  : 'Total Acumulado'}
               </p>
               <p className="font-serif text-2xl sm:text-3xl font-bold text-forest-900 mt-0.5 tracking-tight">
-                {formatMoney(totalMXN, 'MXN')}
+                {formatMoney(selectedPerson === 'ALL' && userProfile !== 'Todos' ? myShareMXN : totalMXN, 'MXN')}
               </p>
             </div>
             <div className="sm:text-right">
@@ -223,9 +243,9 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
                 <Receipt className="w-3.5 h-3.5" />
                 <span>{mxnExpenses.length} {mxnExpenses.length === 1 ? 'asiento' : 'asientos'}</span>
               </span>
-              {mxnExpenses.length > 0 && (
+              {selectedPerson === 'ALL' && userProfile !== 'Todos' && parejaMxnTotal > 0 && (
                 <p className="text-[11px] text-ink-400 mt-0.5">
-                  Promedio: {formatMoney(totalMXN / mxnExpenses.length, 'MXN')}
+                  Pareja total: {formatMoney(parejaMxnTotal, 'MXN')} (tu 50%: {formatMoney(parejaMxnTotal / 2, 'MXN')})
                 </p>
               )}
             </div>
