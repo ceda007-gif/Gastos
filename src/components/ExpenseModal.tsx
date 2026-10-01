@@ -296,10 +296,10 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                   }`}
                 >
                   {p === 'Pareja' 
-                    ? '👫 Pareja (Compartido)' 
+                    ? '👫 Pareja' 
                     : p === 'Yuli' 
-                    ? '🌸 Yuli (Privado)' 
-                    : '💼 Carlos (Privado)'}
+                    ? '🌸 Yuli' 
+                    : '💼 Carlos'}
                 </button>
               ))}
             </div>

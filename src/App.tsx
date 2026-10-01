@@ -83,6 +83,9 @@ export const App: React.FC = () => {
   // Lista única de meses disponibles (YYYY-MM) ordenados descendente
   const allMonths = useMemo(() => {
     const set = new Set<string>();
+    // Incluir mes actual siempre
+    const currentMonthKey = new Date().toISOString().slice(0, 7);
+    set.add(currentMonthKey);
     visibleExpenses.forEach(e => {
       if (e.fecha && e.fecha.length >= 7) {
         set.add(e.fecha.slice(0, 7));
@@ -255,6 +258,9 @@ export const App: React.FC = () => {
             selectedPerson={selectedPerson}
             onSelectPerson={setSelectedPerson}
             userProfile={currentProfile}
+            allMonths={allMonths}
+            selectedMonth={selectedMonth}
+            onSelectMonth={setSelectedMonth}
           />
         </section>
 

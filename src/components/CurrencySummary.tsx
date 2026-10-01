@@ -1,7 +1,7 @@
 import React from 'react';
-import { formatMoney } from '../utils/formatters';
+import { formatMoney, formatMonthYear } from '../utils/formatters';
 import { Expense, Person, PERSONS, PaymentMethod, PAYMENT_METHODS, UserProfile } from '../types';
-import { Coins, Receipt, User, CreditCard, Wallet, ArrowRightLeft, Cloud, Shield } from 'lucide-react';
+import { Coins, Receipt, User, CreditCard, Wallet, ArrowRightLeft, Calendar } from 'lucide-react';
 
 interface CurrencySummaryProps {
   expenses: Expense[];
@@ -9,6 +9,9 @@ interface CurrencySummaryProps {
   selectedPerson: Person | 'ALL';
   onSelectPerson: (person: Person | 'ALL') => void;
   userProfile: UserProfile;
+  allMonths: string[];
+  selectedMonth: string;
+  onSelectMonth: (month: string) => void;
 }
 
 export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
@@ -16,7 +19,10 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
   selectedMonthLabel,
   selectedPerson,
   onSelectPerson,
-  userProfile
+  userProfile,
+  allMonths,
+  selectedMonth,
+  onSelectMonth
 }) => {
   const mxnExpenses = expenses.filter(e => e.moneda === 'MXN');
   const usdExpenses = expenses.filter(e => e.moneda === 'USD');
@@ -57,7 +63,7 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
   return (
     <div className="space-y-4">
       
-      {/* Selector de Cuentas según el Perfil */}
+      {/* Selector de Cuentas y Selector Superior de Mes */}
       <div className="bg-ledger-paper border border-ledger-border rounded-sm p-3 shadow-ledger-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2 pb-2 border-b border-ledger-rule">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-ink-800 uppercase tracking-wider">
@@ -70,10 +76,27 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
                 : 'Cuentas Familiares'}
             </span>
           </div>
-          <span className="text-[11px] text-ink-500 font-sans flex items-center gap-1">
-            <Shield className="w-3 h-3 text-forest-700" />
-            Tus gastos personales son privados; los de Pareja están sincronizados
-          </span>
+
+          {/* Selector de Mes en la parte superior */}
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-ink-500 font-medium hidden sm:inline">Período:</span>
+            <div className="relative flex items-center">
+              <Calendar className="w-3.5 h-3.5 absolute left-2 text-forest-800 pointer-events-none" />
+              <select
+                value={selectedMonth}
+                onChange={(e) => onSelectMonth(e.target.value)}
+                className="pl-7 pr-6 py-1 text-xs bg-ledger-card border border-ledger-border rounded-sm text-ink-900 font-semibold focus:outline-none focus:border-forest-700 cursor-pointer shadow-2xs hover:bg-ledger-rule transition-colors"
+                title="Selecciona el mes a consultar"
+              >
+                <option value="ALL">Todos los meses</option>
+                {allMonths.map(m => (
+                  <option key={m} value={m}>
+                    {formatMonthYear(m)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
 
         <div className={`grid gap-2 ${
@@ -105,15 +128,15 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
             </p>
           </button>
 
-          {/* Botones individuales filtrados por privacidad */}
+          {/* Botones individuales limpios (sin Privado ni Nube) */}
           {personTotals.map(({ person, total, count, percentage }) => {
             const isSelected = selectedPerson === person;
             const isPareja = person === 'Pareja';
             const label = isPareja 
-              ? '👫 Pareja (Nube)' 
+              ? '👫 Pareja' 
               : person === 'Carlos' 
-              ? '💼 Carlos (Privado)' 
-              : '🌸 Yuli (Privado)';
+              ? '💼 Carlos' 
+              : '🌸 Yuli';
             
             return (
               <button
@@ -142,8 +165,8 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
                 </p>
                 <p className={`text-[10px] mt-0.5 truncate ${isSelected ? 'text-white/80' : 'text-ink-500'}`}>
                   {isPareja 
-                    ? (userProfile === 'Carlos' ? 'Compartido con Yuli' : userProfile === 'Yuli' ? 'Compartido con Carlos' : 'Gastos del hogar')
-                    : `${percentage.toFixed(0)}% de tus gastos`}
+                    ? 'Gastos compartidos'
+                    : `${percentage.toFixed(0)}% del total`}
                 </p>
               </button>
             );
@@ -197,40 +220,64 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
             </div>
           </div>
 
-          {/* Desglose por Método de Pago en MXN */}
+          {/* Desglose por Método de Pago en Renglones */}
           <div className="pt-3 border-t border-ledger-rule">
-            <p className="text-[11px] uppercase tracking-wider text-ink-500 font-semibold mb-2 flex items-center gap-1">
+            <p className="text-[11px] uppercase tracking-wider text-ink-500 font-semibold mb-2 flex items-center gap-1.5">
               <CreditCard className="w-3.5 h-3.5 text-forest-700" />
-              Desglose por Método de Pago
+              <span>Desglose por Método de Pago</span>
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <div className="p-2 bg-ledger-card border border-ledger-border rounded-xs">
-                <span className="text-[11px] text-ink-600 block">💵 Efectivo</span>
-                <span className="font-serif font-bold text-xs sm:text-sm text-ink-900">
+
+            <div className="divide-y divide-ledger-rule/60 text-xs">
+              <div className="py-1.5 flex items-center justify-between hover:bg-ledger-card/50 px-2 rounded-xs transition-colors">
+                <span className="text-ink-800 font-medium flex items-center gap-2">
+                  <span>💵</span>
+                  <span>Efectivo</span>
+                  {cashExpenses.length > 0 && (
+                    <span className="text-[10px] text-ink-400 font-mono">({cashExpenses.length})</span>
+                  )}
+                </span>
+                <span className="font-serif font-bold text-sm text-ink-900">
                   {formatMoney(totalCash, 'MXN')}
                 </span>
-                <span className="text-[10px] text-ink-400 block mt-0.5">{cashExpenses.length} gastos</span>
               </div>
-              <div className="p-2 bg-ledger-card border border-ledger-border rounded-xs">
-                <span className="text-[11px] text-ink-600 block">💳 T. Crédito</span>
-                <span className="font-serif font-bold text-xs sm:text-sm text-forest-800">
+
+              <div className="py-1.5 flex items-center justify-between hover:bg-ledger-card/50 px-2 rounded-xs transition-colors">
+                <span className="text-ink-800 font-medium flex items-center gap-2">
+                  <span>💳</span>
+                  <span>T. Crédito</span>
+                  {creditExpenses.length > 0 && (
+                    <span className="text-[10px] text-ink-400 font-mono">({creditExpenses.length})</span>
+                  )}
+                </span>
+                <span className="font-serif font-bold text-sm text-forest-800">
                   {formatMoney(totalCredit, 'MXN')}
                 </span>
-                <span className="text-[10px] text-ink-400 block mt-0.5">{creditExpenses.length} gastos</span>
               </div>
-              <div className="p-2 bg-ledger-card border border-ledger-border rounded-xs">
-                <span className="text-[11px] text-ink-600 block">💳 T. Débito</span>
-                <span className="font-serif font-bold text-xs sm:text-sm text-ink-900">
+
+              <div className="py-1.5 flex items-center justify-between hover:bg-ledger-card/50 px-2 rounded-xs transition-colors">
+                <span className="text-ink-800 font-medium flex items-center gap-2">
+                  <span>💳</span>
+                  <span>T. Débito</span>
+                  {debitExpenses.length > 0 && (
+                    <span className="text-[10px] text-ink-400 font-mono">({debitExpenses.length})</span>
+                  )}
+                </span>
+                <span className="font-serif font-bold text-sm text-ink-900">
                   {formatMoney(totalDebit, 'MXN')}
                 </span>
-                <span className="text-[10px] text-ink-400 block mt-0.5">{debitExpenses.length} gastos</span>
               </div>
-              <div className="p-2 bg-ledger-card border border-ledger-border rounded-xs">
-                <span className="text-[11px] text-ink-600 block">📱 Transferencia</span>
-                <span className="font-serif font-bold text-xs sm:text-sm text-ink-900">
+
+              <div className="py-1.5 flex items-center justify-between hover:bg-ledger-card/50 px-2 rounded-xs transition-colors">
+                <span className="text-ink-800 font-medium flex items-center gap-2">
+                  <span>📱</span>
+                  <span>Transferencia</span>
+                  {transferExpenses.length > 0 && (
+                    <span className="text-[10px] text-ink-400 font-mono">({transferExpenses.length})</span>
+                  )}
+                </span>
+                <span className="font-serif font-bold text-sm text-ink-900">
                   {formatMoney(totalTransfer, 'MXN')}
                 </span>
-                <span className="text-[10px] text-ink-400 block mt-0.5">{transferExpenses.length} gastos</span>
               </div>
             </div>
           </div>
