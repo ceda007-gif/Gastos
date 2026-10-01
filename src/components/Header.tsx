@@ -4,38 +4,19 @@ import { AppSettings } from '../types';
 
 interface HeaderProps {
   settings: AppSettings;
-  onOpenScanner: (file: File) => void;
-  onOpenBatchScanner: (files: File[]) => void;
-  onOpenManualEntry: () => void;
+  onOpenAddModal: () => void;
   onOpenSettings: () => void;
   onOpenProfileModal: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   settings,
-  onOpenScanner,
-  onOpenBatchScanner,
-  onOpenManualEntry,
+  onOpenAddModal,
   onOpenSettings,
   onOpenProfileModal
 }) => {
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   const hasApiKey = Boolean(settings.geminiApiKey && settings.geminiApiKey.trim().length > 5);
   const currentProfile = settings.userProfile || 'Carlos';
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const files = Array.from(e.target.files);
-      if (files.length === 1) {
-        onOpenScanner(files[0]);
-      } else {
-        onOpenBatchScanner(files);
-      }
-      e.target.value = ''; // Reset input so same file can be chosen again
-    }
-  };
 
   return (
     <header className="border-b border-ledger-border bg-ledger-paper/95 backdrop-blur-sm sticky top-0 z-30 shadow-ledger-sm">
@@ -87,78 +68,28 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </div>
 
-          {/* Botones de acción principales */}
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-            {/* Inputs ocultos para cámara y archivo */}
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*,image/heic,image/heif"
-              capture="environment"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,image/heic,image/heif"
-              multiple
-              className="hidden"
-              onChange={handleFileChange}
-            />
-
-            {/* Botón: Tomar Foto (Cámara móvil) */}
+          {/* Botones de acción principales: Único botón '+' y Ajustes */}
+          <div className="flex items-center gap-2">
+            {/* Botón Principal: + Nuevo Gasto */}
             <button
-              onClick={() => {
-                if (!hasApiKey) {
-                  onOpenSettings();
-                  return;
-                }
-                cameraInputRef.current?.click();
-              }}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3.5 py-2 rounded-sm bg-forest-800 text-[#FAF6ED] hover:bg-forest-900 active:bg-forest-900 font-medium text-xs sm:text-sm border border-forest-900 shadow-sm transition-all duration-150 group"
-              title="Tomar foto de ticket con la cámara"
+              onClick={onOpenAddModal}
+              className="flex items-center gap-2 px-4 py-2 rounded-sm bg-forest-800 text-[#FAF6ED] hover:bg-forest-900 active:bg-forest-900 font-medium text-xs sm:text-sm border border-forest-900 shadow-sm transition-all duration-150 group"
+              title="Registrar nuevo gasto (Foto, Galería o a Mano)"
             >
-              <Camera className="w-4 h-4 text-[#D8E6DE] group-hover:scale-110 transition-transform" />
-              <span>Tomar Foto</span>
+              <PlusCircle className="w-4 h-4 text-[#D8E6DE] group-hover:rotate-90 transition-transform duration-200" />
+              <span className="font-semibold">Nuevo Gasto</span>
             </button>
 
-            {/* Botón: Subir Tickets (1 o varios a la vez) */}
-            <button
-              onClick={() => {
-                if (!hasApiKey) {
-                  onOpenSettings();
-                  return;
-                }
-                fileInputRef.current?.click();
-              }}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3.5 py-2 rounded-sm bg-ledger-card text-forest-900 hover:bg-ledger-rule border border-ledger-border font-medium text-xs sm:text-sm transition-all duration-150"
-              title="Subir 1 o varios tickets a la vez desde tu galería"
-            >
-              <Layers className="w-4 h-4 text-forest-700" />
-              <span>Subir Ticket(s)</span>
-            </button>
-
-            {/* Botón: Gasto a mano */}
-            <button
-              onClick={onOpenManualEntry}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3.5 py-2 rounded-sm bg-leather-700 text-[#FAF6ED] hover:bg-leather-800 border border-leather-800 font-medium text-xs sm:text-sm transition-all duration-150"
-              title="Registrar gasto sin ticket (renta, luz, agua, etc.)"
-            >
-              <PlusCircle className="w-4 h-4 text-[#F4E1D2]" />
-              <span>Gasto a Mano</span>
-            </button>
-
-            {/* Botón: Ajustes en escritorio */}
+            {/* Botón: Ajustes */}
             <button
               onClick={onOpenSettings}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-sm border border-ledger-border bg-ledger-card hover:bg-ledger-rule text-ink-700 text-xs sm:text-sm transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-sm border border-ledger-border bg-ledger-card hover:bg-ledger-rule text-ink-700 text-xs sm:text-sm transition-colors"
               title="Configuración de IA y Respaldos"
             >
               <Settings className="w-4 h-4 text-ink-700" />
-              <span>Ajustes</span>
+              <span className="hidden sm:inline">Ajustes</span>
               {hasApiKey ? (
-                <span className="w-2 h-2 rounded-full bg-forest-600" title="API Key de Gemini conectada" />
+                <span className="w-2 h-2 rounded-full bg-forest-600" title="API Key conectada" />
               ) : (
                 <span className="w-2 h-2 rounded-full bg-leather-600 animate-ping" title="Falta API Key de Gemini" />
               )}

@@ -13,6 +13,7 @@ import { CurrencySummary } from './components/CurrencySummary';
 import { ExpenseList } from './components/ExpenseList';
 import { CategoryBreakdown } from './components/CategoryBreakdown';
 import { MonthlyBreakdown } from './components/MonthlyBreakdown';
+import { AddActionModal } from './components/AddActionModal';
 import { ScannerModal } from './components/ScannerModal';
 import { BatchScannerModal } from './components/BatchScannerModal';
 import { ExpenseModal } from './components/ExpenseModal';
@@ -34,6 +35,7 @@ export const App: React.FC = () => {
   const [selectedPerson, setSelectedPerson] = useState<Person | 'ALL'>('ALL');
 
   // Estados de Modales
+  const [isAddActionModalOpen, setIsAddActionModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [selectedFileForScan, setSelectedFileForScan] = useState<File | null>(null);
@@ -240,9 +242,7 @@ export const App: React.FC = () => {
       {/* Encabezado del Libro Contable */}
       <Header
         settings={settings}
-        onOpenScanner={handleStartScan}
-        onOpenBatchScanner={handleStartBatchScan}
-        onOpenManualEntry={handleOpenManualEntry}
+        onOpenAddModal={() => setIsAddActionModalOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenProfileModal={() => setIsProfileModalOpen(true)}
       />
@@ -310,84 +310,14 @@ export const App: React.FC = () => {
 
       </main>
 
-      {/* Barra de Acceso Rápido Flotante para Teléfonos Móviles */}
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-ledger-paper/95 backdrop-blur-md border-t border-ledger-border px-3 py-2 flex items-center justify-around shadow-lg">
-        <input
-          ref={mobileCameraInputRef}
-          type="file"
-          accept="image/*,image/heic,image/heif"
-          capture="environment"
-          className="hidden"
-          onChange={(e) => {
-            if (e.target.files && e.target.files[0]) {
-              handleStartScan(e.target.files[0]);
-              e.target.value = '';
-            }
-          }}
-        />
-
-        <input
-          ref={mobileBatchInputRef}
-          type="file"
-          accept="image/*,image/heic,image/heif"
-          multiple
-          className="hidden"
-          onChange={(e) => {
-            if (e.target.files && e.target.files.length > 0) {
-              const files = Array.from(e.target.files);
-              if (files.length === 1) {
-                handleStartScan(files[0]);
-              } else {
-                handleStartBatchScan(files);
-              }
-              e.target.value = '';
-            }
-          }}
-        />
-
-        {/* Cámara Móvil */}
+      {/* Botón Flotante Móvil (+) para agregar gasto */}
+      <div className="sm:hidden fixed bottom-6 right-5 z-40">
         <button
-          onClick={() => {
-            if (!settings.geminiApiKey) {
-              setIsSettingsOpen(true);
-              return;
-            }
-            mobileCameraInputRef.current?.click();
-          }}
-          className="flex flex-col items-center gap-0.5 text-forest-800 font-medium active:scale-95 transition-transform"
+          onClick={() => setIsAddActionModalOpen(true)}
+          className="w-14 h-14 rounded-full bg-forest-800 text-[#FAF6ED] flex items-center justify-center shadow-2xl border-2 border-forest-600 active:scale-95 hover:bg-forest-900 transition-all duration-150"
+          title="Agregar nuevo gasto (+)"
         >
-          <div className="w-9 h-9 rounded-full bg-forest-800 text-[#FAF6ED] flex items-center justify-center shadow-md">
-            <Camera className="w-4 h-4 text-[#D8E6DE]" />
-          </div>
-          <span className="text-[10px] font-semibold">Tomar Foto</span>
-        </button>
-
-        {/* Subir Lote Móvil */}
-        <button
-          onClick={() => {
-            if (!settings.geminiApiKey) {
-              setIsSettingsOpen(true);
-              return;
-            }
-            mobileBatchInputRef.current?.click();
-          }}
-          className="flex flex-col items-center gap-0.5 text-forest-800 font-medium active:scale-95 transition-transform"
-        >
-          <div className="w-9 h-9 rounded-full bg-forest-100 border border-forest-300 text-forest-800 flex items-center justify-center shadow-xs">
-            <Layers className="w-4 h-4 text-forest-800" />
-          </div>
-          <span className="text-[10px] font-semibold">Varios Tickets</span>
-        </button>
-
-        {/* Gasto a Mano Móvil */}
-        <button
-          onClick={handleOpenManualEntry}
-          className="flex flex-col items-center gap-0.5 text-leather-800 font-medium active:scale-95 transition-transform"
-        >
-          <div className="w-9 h-9 rounded-full bg-leather-700 text-[#FAF6ED] flex items-center justify-center shadow-md">
-            <PlusCircle className="w-4 h-4 text-[#F4E1D2]" />
-          </div>
-          <span className="text-[10px] font-semibold">A Mano</span>
+          <PlusCircle className="w-7 h-7 text-[#D8E6DE]" />
         </button>
       </div>
 
@@ -405,6 +335,16 @@ export const App: React.FC = () => {
       </footer>
 
       {/* Modales */}
+      <AddActionModal
+        isOpen={isAddActionModalOpen}
+        onClose={() => setIsAddActionModalOpen(false)}
+        hasApiKey={Boolean(settings.geminiApiKey && settings.geminiApiKey.trim().length > 5)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onSelectPhoto={(file) => handleStartScan(file)}
+        onSelectBatch={(files) => handleStartBatchScan(files)}
+        onSelectManual={handleOpenManualEntry}
+      />
+
       <ScannerModal
         isOpen={isScannerOpen}
         file={selectedFileForScan}
@@ -417,7 +357,7 @@ export const App: React.FC = () => {
         onManualWithPhoto={handleManualWithPhoto}
         onSelectNewPhoto={() => {
           setIsScannerOpen(false);
-          mobileCameraInputRef.current?.click();
+          setIsAddActionModalOpen(true);
         }}
       />
 
