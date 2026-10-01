@@ -24,11 +24,22 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
   selectedMonth,
   onSelectMonth
 }) => {
-  const mxnExpenses = expenses.filter(e => e.moneda === 'MXN');
-  const usdExpenses = expenses.filter(e => e.moneda === 'USD');
+  const allMxnExpenses = expenses.filter(e => e.moneda === 'MXN');
+  const allUsdExpenses = expenses.filter(e => e.moneda === 'USD');
+
+  // Si se seleccionó una cuenta en particular (ej. Carlos o Pareja), filtrar las tarjetas de abajo
+  const mxnExpenses = selectedPerson === 'ALL'
+    ? allMxnExpenses
+    : allMxnExpenses.filter(e => (e.persona || 'Pareja') === selectedPerson);
+
+  const usdExpenses = selectedPerson === 'ALL'
+    ? allUsdExpenses
+    : allUsdExpenses.filter(e => (e.persona || 'Pareja') === selectedPerson);
 
   const totalMXN = mxnExpenses.reduce((acc, curr) => acc + curr.total, 0);
   const totalUSD = usdExpenses.reduce((acc, curr) => acc + curr.total, 0);
+
+  const totalAllMXN = allMxnExpenses.reduce((acc, curr) => acc + curr.total, 0);
 
   // Determinar qué personas están disponibles según el perfil activo
   const availablePersons: Person[] = userProfile === 'Carlos'
@@ -37,15 +48,15 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
     ? ['Yuli', 'Pareja']
     : ['Carlos', 'Yuli', 'Pareja'];
 
-  // Totales por Persona (en MXN)
+  // Totales por Persona (en MXN) para los botones superiores
   const personTotals = availablePersons.map(p => {
-    const list = mxnExpenses.filter(e => (e.persona || 'Pareja') === p);
+    const list = allMxnExpenses.filter(e => (e.persona || 'Pareja') === p);
     const sum = list.reduce((acc, e) => acc + e.total, 0);
     return {
       person: p,
       total: sum,
       count: list.length,
-      percentage: totalMXN > 0 ? (sum / totalMXN) * 100 : 0
+      percentage: totalAllMXN > 0 ? (sum / totalAllMXN) * 100 : 0
     };
   });
 
@@ -118,13 +129,13 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
               <span className={`text-[10px] px-1.5 py-0.5 rounded-xs font-mono font-bold ${
                 selectedPerson === 'ALL' ? 'bg-forest-900 text-forest-100' : 'bg-ledger-rule text-ink-700'
               }`}>
-                {mxnExpenses.length}
+                {allMxnExpenses.length}
               </span>
             </div>
             <p className={`text-base font-serif font-bold mt-1 ${
               selectedPerson === 'ALL' ? 'text-white' : 'text-forest-900'
             }`}>
-              {formatMoney(totalMXN, 'MXN')}
+              {formatMoney(totalAllMXN, 'MXN')}
             </p>
           </button>
 
