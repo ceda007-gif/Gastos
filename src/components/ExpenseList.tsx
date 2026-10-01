@@ -228,86 +228,108 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
             <div className="col-span-4 sm:col-span-3 text-right">Monto & Acciones</div>
           </div>
 
-          {/* Renglones estilo libro contable */}
+          {/* Renglones */}
           {filteredExpenses.map((expense) => {
             const badge = CATEGORY_BADGES[expense.categoria] || CATEGORY_BADGES['Otros'];
             return (
               <div
                 key={expense.id}
-                className="grid grid-cols-12 px-3 sm:px-4 py-2.5 items-center hover:bg-forest-50/40 transition-colors group border-b border-ledger-rule/60 text-xs sm:text-sm"
+                className="grid grid-cols-12 px-4 py-3 items-center hover:bg-[#FAF7EE] transition-colors group text-sm"
               >
                 {/* Columna Fecha */}
                 <div className="col-span-3 sm:col-span-2 flex flex-col">
-                  <span className="font-mono text-xs font-semibold text-ink-900">
+                  <span className="font-mono text-xs font-semibold text-ink-800">
                     {expense.fecha}
                   </span>
-                  <span className="text-[10px] text-ink-400 capitalize truncate hidden sm:block">
+                  <span className="text-[11px] text-ink-400 capitalize truncate hidden sm:block">
                     {formatDateHuman(expense.fecha)}
                   </span>
                 </div>
 
                 {/* Columna Comercio / Detalle */}
-                <div className="col-span-5 sm:col-span-5 pr-2">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-serif font-bold text-ink-900 text-xs sm:text-sm">
+                <div className="col-span-5 sm:col-span-4 pr-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-serif font-semibold text-ink-900 truncate">
                       {expense.comercio}
                     </span>
                     {expense.origen === 'escaneo_ia' && (
-                      <span title="Leído automáticamente con IA" className="text-forest-700 inline-flex">
-                        <Sparkles className="w-3 h-3" />
+                      <span title="Leído automáticamente con IA" className="shrink-0 text-forest-700">
+                        <Sparkles className="w-3.5 h-3.5" />
                       </span>
                     )}
                     {expense.fotoRecibo && (
                       <button
                         onClick={() => onViewReceipt(expense.fotoRecibo!, expense.comercio)}
                         title="Ver foto del ticket"
-                        className="text-leather-600 hover:text-leather-800 inline-flex"
+                        className="shrink-0 text-leather-600 hover:text-leather-800"
                       >
-                        <ImageIcon className="w-3 h-3" />
+                        <ImageIcon className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
-
-                  {/* Notas y subtítulo contable continuo */}
-                  <div className="text-[11px] text-ink-600 flex items-center gap-2 mt-0.5 truncate">
-                    <span className="font-medium text-forest-900">
+                  {expense.notas && (
+                    <p className="text-xs text-ink-500 truncate mt-0.5">
+                      {expense.notas}
+                    </p>
+                  )}
+                  
+                  {/* Badges de Persona, Método de Pago y Categoría */}
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    {/* Persona */}
+                    <span className={`inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-xs border font-medium ${
+                      (expense.persona || 'Pareja') === 'Yuli'
+                        ? 'bg-rose-50 text-rose-800 border-rose-200'
+                        : (expense.persona || 'Pareja') === 'Carlos'
+                        ? 'bg-sky-50 text-sky-800 border-sky-200'
+                        : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    }`}>
                       {(expense.persona || 'Pareja') === 'Yuli' ? '🌸 Yuli' :
                        (expense.persona || 'Pareja') === 'Carlos' ? '💼 Carlos' : '👫 Pareja'}
                     </span>
-                    <span>•</span>
-                    <span className="text-ink-600 font-sans">
-                      {(expense.metodoPago || 'Efectivo') === 'Efectivo' ? 'Efectivo' :
-                       expense.metodoPago === 'Tarjeta de Crédito' ? `T. Crédito ${expense.ultimos4Digitos ? `(${expense.ultimos4Digitos})` : ''}` :
-                       expense.metodoPago === 'Tarjeta de Débito' ? `T. Débito ${expense.ultimos4Digitos ? `(${expense.ultimos4Digitos})` : ''}` :
-                       'Transferencia'}
+
+                    {/* Método de Pago */}
+                    <span className={`inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-xs border font-medium ${
+                      (expense.metodoPago || 'Efectivo') === 'Efectivo'
+                        ? 'bg-amber-50 text-amber-900 border-amber-200'
+                        : expense.metodoPago === 'Tarjeta de Crédito'
+                        ? 'bg-purple-50 text-purple-900 border-purple-200 font-mono'
+                        : expense.metodoPago === 'Tarjeta de Débito'
+                        ? 'bg-blue-50 text-blue-900 border-blue-200 font-mono'
+                        : 'bg-slate-50 text-slate-800 border-slate-200'
+                    }`}>
+                      {(expense.metodoPago || 'Efectivo') === 'Efectivo' ? '💵 Efectivo' :
+                       expense.metodoPago === 'Tarjeta de Crédito' ? `💳 TC ${expense.ultimos4Digitos ? `...${expense.ultimos4Digitos}` : ''}` :
+                       expense.metodoPago === 'Tarjeta de Débito' ? `💳 Débito ${expense.ultimos4Digitos ? `...${expense.ultimos4Digitos}` : ''}` :
+                       '📱 Transf.'}
                     </span>
-                    {expense.notas && (
-                      <>
-                        <span>•</span>
-                        <span className="text-ink-400 italic truncate">{expense.notas}</span>
-                      </>
-                    )}
+
+                    {/* Badge de categoría visible en móviles */}
+                    <span className={`sm:hidden inline-block text-[10px] px-1.5 py-0.5 rounded-xs border font-medium ${badge.bg} ${badge.text} ${badge.border}`}>
+                      {expense.categoria}
+                    </span>
                   </div>
                 </div>
 
-                {/* Columna Categoría */}
-                <div className="hidden sm:block sm:col-span-2">
-                  <span className={`inline-block text-[11px] px-2 py-0.5 rounded-xs border font-medium ${badge.bg} ${badge.text} ${badge.border}`}>
+                {/* Columna Categoría (escritorio) */}
+                <div className="hidden sm:block sm:col-span-3">
+                  <span className={`inline-block text-xs px-2 py-0.5 rounded-sm border font-medium ${badge.bg} ${badge.text} ${badge.border}`}>
                     {expense.categoria}
                   </span>
                 </div>
 
                 {/* Columna Monto & Acciones */}
                 <div className="col-span-4 sm:col-span-3 flex items-center justify-end gap-2 text-right">
-                  <span className={`font-serif font-bold text-xs sm:text-sm tracking-tight ${expense.moneda === 'USD' ? 'text-leather-800' : 'text-forest-900'}`}>
-                    {formatMoney(expense.total, expense.moneda)}
-                  </span>
+                  <div className="flex flex-col items-end">
+                    <span className={`font-serif font-bold text-sm sm:text-base ${expense.moneda === 'USD' ? 'text-leather-800' : 'text-forest-900'}`}>
+                      {formatMoney(expense.total, expense.moneda)}
+                    </span>
+                  </div>
 
                   {/* Botones de acción */}
-                  <div className="flex items-center gap-0.5 pl-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1 pl-2 opacity-80 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => onEditExpense(expense)}
-                      className="p-1 rounded text-ink-400 hover:text-forest-800 hover:bg-forest-100 transition-colors"
+                      className="p-1 rounded text-ink-400 hover:text-forest-800 hover:bg-forest-50 transition-colors"
                       title="Editar este gasto"
                     >
                       <Edit3 className="w-3.5 h-3.5" />
