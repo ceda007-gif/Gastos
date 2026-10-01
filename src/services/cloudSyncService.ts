@@ -91,7 +91,7 @@ export async function syncParejaWithFirestore(
       if (data.documents && Array.isArray(data.documents)) {
         remoteExpenses = data.documents
           .map(firestoreDocumentToExpense)
-          .filter((e): e is Expense => e !== null);
+          .filter((e): e is Expense => e !== null && !String(e.id || '').startsWith('sample-'));
       }
     } else if (response.status !== 404) {
       throw new Error(`Error ${response.status}: ${response.statusText}`);
@@ -101,6 +101,7 @@ export async function syncParejaWithFirestore(
     const remoteIdMap = new Map(remoteExpenses.map(e => [e.id, e]));
 
     for (const localExp of localParejaExpenses) {
+      if (String(localExp.id || '').startsWith('sample-')) continue;
       const remote = remoteIdMap.get(localExp.id);
       if (!remote || new Date(localExp.creadoEn) > new Date(remote.creadoEn)) {
         // Enviar documento a Firestore con PATCH
@@ -133,16 +134,35 @@ export async function syncParejaWithFirestore(
 }
 
 /**
+ * Elimina un documento de Firestore cuando el usuario lo borra localmente
+ */
+export async function deleteExpenseFromFirestore(expenseId: string, settings: AppSettings): Promise<void> {
+  const projectId = settings.cloudSync?.firebaseProjectId?.trim();
+  const syncCode = settings.cloudSync?.syncCode?.trim() || 'FAMILIA-CY';
+  if (!projectId || !expenseId) return;
+
+  const collectionName = `pareja_gastos_${syncCode.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+  const docUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}/${expenseId}`;
+  try {
+    await fetch(docUrl, { method: 'DELETE' });
+  } catch (e) {
+    console.warn('Error eliminando gasto en Firestore:', e);
+  }
+}
+
+/**
  * Fusiona gastos recibidos de Pareja en el conjunto total local sin tocar los gastos privados de Carlos ni Yuli
  */
 export function mergeParejaExpenses(allExpenses: Expense[], updatedParejaExpenses: Expense[]): Expense[] {
   // Conservar todos los gastos privados (Carlos, Yuli u otros)
-  const personalExpenses = allExpenses.filter(e => (e.persona || 'Pareja') !== 'Pareja');
+  const personalExpenses = allExpenses.filter(e => (e.persona || 'Pareja') !== 'Pareja' && !String(e.id || '').startsWith('sample-'));
 
-  // Asegurar que no haya duplicados entre los gastos de Pareja
+  // Asegurar que no haya duplicados entre los gastos de Pareja ni datos de muestra
   const map = new Map<string, Expense>();
   for (const exp of updatedParejaExpenses) {
-    map.set(exp.id, { ...exp, persona: 'Pareja' });
+    if (!String(exp.id || '').startsWith('sample-')) {
+      map.set(exp.id, { ...exp, persona: 'Pareja' });
+    }
   }
 
   return [...personalExpenses, ...Array.from(map.values())];

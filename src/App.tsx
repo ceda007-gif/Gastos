@@ -7,7 +7,7 @@ import {
   saveStoredSettings,
   filterExpensesByProfile
 } from './services/storageService';
-import { syncParejaWithFirestore, mergeParejaExpenses } from './services/cloudSyncService';
+import { syncParejaWithFirestore, mergeParejaExpenses, deleteExpenseFromFirestore } from './services/cloudSyncService';
 import { Header } from './components/Header';
 import { CurrencySummary } from './components/CurrencySummary';
 import { ExpenseList } from './components/ExpenseList';
@@ -24,8 +24,10 @@ import { formatMonthYear } from './utils/formatters';
 import { Camera, PlusCircle, BookMarked, ShieldCheck, Layers } from 'lucide-react';
 
 export const App: React.FC = () => {
-  // Estados persistentes
-  const [expenses, setExpenses] = useState<Expense[]>(() => getStoredExpenses());
+  // Estados persistentes (filtrando cualquier residuo previo de sample-)
+  const [expenses, setExpenses] = useState<Expense[]>(() => 
+    getStoredExpenses().filter(e => !String(e.id || '').startsWith('sample-'))
+  );
   const [settings, setSettings] = useState<AppSettings>(() => getStoredSettings());
 
   const currentProfile: UserProfile = settings.userProfile || 'Carlos';
@@ -216,8 +218,12 @@ export const App: React.FC = () => {
   // Eliminar Gasto
   const handleDeleteExpense = (id: string) => {
     if (confirm('¿Deseas eliminar este asiento de gasto?')) {
+      const expToDelete = expenses.find(e => e.id === id);
       const nextExpenses = expenses.filter(e => e.id !== id);
       setExpenses(nextExpenses);
+      if (expToDelete && (expToDelete.persona || 'Pareja') === 'Pareja') {
+        deleteExpenseFromFirestore(id, settings);
+      }
     }
   };
 
