@@ -63,9 +63,9 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({
     try {
       // 1. Redimensionar y optimizar para OCR rápido
       const { base64Data, mimeType, dataUrl } = await optimizeImage(imageFile, {
-        maxWidth: 1600,
-        maxHeight: 1600,
-        quality: 0.85
+        maxWidth: 1280,
+        maxHeight: 1280,
+        quality: 0.78
       });
 
       setPhotoPreview(dataUrl);

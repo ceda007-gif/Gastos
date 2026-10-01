@@ -16,7 +16,7 @@ export async function optimizeImage(
   file: File | Blob,
   options: ImageProcessingOptions = {}
 ): Promise<{ base64Data: string; mimeType: string; dataUrl: string }> {
-  const { maxWidth = 1600, maxHeight = 1600, quality = 0.85 } = options;
+  const { maxWidth = 1280, maxHeight = 1280, quality = 0.78 } = options;
 
   let processedBlob: Blob = file;
 
@@ -282,13 +282,29 @@ REGLAS OBLIGATORIAS:
         }
       };
 
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 18000); // 18 segundos timeout
+
+      let response: Response;
+      try {
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal
+        });
+      } catch (networkErr: any) {
+        clearTimeout(timeoutId);
+        if (networkErr.name === 'AbortError') {
+          console.warn(`Tiempo de espera agotado con ${currentModel}, intentando con siguiente modelo...`);
+          lastError = new Error(`Tiempo de espera agotado al conectar con Google Gemini (${currentModel}).`);
+          continue;
+        }
+        throw networkErr;
+      }
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
