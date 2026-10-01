@@ -63,9 +63,9 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({
     try {
       // 1. Redimensionar y optimizar para OCR rápido
       const { base64Data, mimeType, dataUrl } = await optimizeImage(imageFile, {
-        maxWidth: 1280,
-        maxHeight: 1280,
-        quality: 0.78
+        maxWidth: 1024,
+        maxHeight: 1024,
+        quality: 0.72
       });
 
       setPhotoPreview(dataUrl);
@@ -82,13 +82,8 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({
         settings.geminiModel
       );
 
-      setProcessingStep('¡Datos extraídos con éxito!');
-      
-      // Breve pausa para dar retroalimentación visual al usuario
-      setTimeout(() => {
-        setIsProcessing(false);
-        onScanSuccess(parsedReceipt, dataUrl);
-      }, 400);
+      setIsProcessing(false);
+      onScanSuccess(parsedReceipt, dataUrl);
 
     } catch (err: any) {
       console.error('Error al procesar ticket con IA:', err);

@@ -16,7 +16,7 @@ export async function optimizeImage(
   file: File | Blob,
   options: ImageProcessingOptions = {}
 ): Promise<{ base64Data: string; mimeType: string; dataUrl: string }> {
-  const { maxWidth = 1280, maxHeight = 1280, quality = 0.78 } = options;
+  const { maxWidth = 1024, maxHeight = 1024, quality = 0.72 } = options;
 
   let processedBlob: Blob = file;
 
@@ -280,12 +280,13 @@ REGLAS OBLIGATORIAS:
         ],
         generationConfig: {
           response_mime_type: 'application/json',
-          temperature: 0.1
+          temperature: 0.1,
+          max_output_tokens: 350
         }
       };
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 18000); // 18 segundos timeout
+      const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 segundos timeout rápido
 
       let response: Response;
       try {

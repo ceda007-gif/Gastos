@@ -108,9 +108,9 @@ export const BatchScannerModal: React.FC<BatchScannerModalProps> = ({
       try {
         const item = batchItems[i];
         const { base64Data, mimeType, dataUrl } = await optimizeImage(item.file, {
-          maxWidth: 1280,
-          maxHeight: 1280,
-          quality: 0.78
+          maxWidth: 1024,
+          maxHeight: 1024,
+          quality: 0.72
         });
 
         const parsed = await parseReceiptWithGemini(
