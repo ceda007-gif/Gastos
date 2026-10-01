@@ -47,9 +47,6 @@ export const Header: React.FC<HeaderProps> = ({
                     <span className="w-1.5 h-1.5 rounded-full bg-forest-600 animate-pulse" title="Sincronización Pareja activa" />
                   </button>
                 </div>
-                <p className="text-xs sm:text-sm text-ink-500 font-sans tracking-wide mt-1">
-                  Libro de gastos & lector de tickets con IA
-                </p>
               </div>
             </div>
 

@@ -151,13 +151,6 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
             }`}>
               {formatMoney(myShareMXN, 'MXN')}
             </p>
-            {userProfile !== 'Todos' && (
-              <p className={`text-[10px] mt-0.5 truncate ${
-                selectedPerson === 'ALL' ? 'text-white/80' : 'text-ink-500'
-              }`}>
-                {userProfile} + 50% Pareja
-              </p>
-            )}
           </button>
 
           {/* Botones individuales limpios (sin Privado ni Nube) */}
@@ -233,9 +226,7 @@ export const CurrencySummary: React.FC<CurrencySummaryProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-4">
             <div>
               <p className="text-xs uppercase tracking-wider text-ink-500 font-sans">
-                {selectedPerson === 'ALL' && userProfile !== 'Todos'
-                  ? `Total que te corresponde (${userProfile} + 50% Pareja)`
-                  : 'Total Acumulado'}
+                Total Acumulado
               </p>
               <p className="font-serif text-2xl sm:text-3xl font-bold text-forest-900 mt-0.5 tracking-tight">
                 {formatMoney(selectedPerson === 'ALL' && userProfile !== 'Todos' ? myShareMXN : totalMXN, 'MXN')}

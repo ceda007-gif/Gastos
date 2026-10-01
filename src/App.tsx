@@ -299,17 +299,6 @@ export const App: React.FC = () => {
               expenses={expenses}
               onSelectMonth={(monthKey) => setSelectedMonth(monthKey)}
             />
-
-            {/* Ficha de Garantía de Privacidad Contable */}
-            <div className="p-3.5 bg-ledger-paper border border-ledger-border rounded-sm text-xs text-ink-600 space-y-1.5 shadow-ledger-sm">
-              <div className="flex items-center gap-1.5 text-forest-800 font-semibold font-serif text-sm">
-                <ShieldCheck className="w-4 h-4" />
-                <span>Libreta Local & Segura</span>
-              </div>
-              <p className="leading-relaxed">
-                Todos tus gastos, tickets y fotografías permanecen almacenados exclusivamente en tu navegador. Tus finanzas son 100% privadas.
-              </p>
-            </div>
           </aside>
 
         </div>
@@ -332,11 +321,8 @@ export const App: React.FC = () => {
         <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 font-serif text-ink-700 font-medium">
             <BookMarked className="w-3.5 h-3.5 text-forest-800" />
-            <span>Mis Cuentas — Edición Cuaderno de Cuentas</span>
+            <span>Mis Cuentas</span>
           </div>
-          <p className="text-[11px] text-ink-400">
-            Escaneo asistido por Google Gemini (Vision) • Almacenamiento local persistente
-          </p>
         </div>
       </footer>
 
