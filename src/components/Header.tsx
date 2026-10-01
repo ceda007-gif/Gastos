@@ -80,18 +80,17 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="font-semibold">Nuevo Gasto</span>
             </button>
 
-            {/* Botón: Ajustes */}
+            {/* Botón: Ajustes (Solo ícono de engranaje compacto) */}
             <button
               onClick={onOpenSettings}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-sm border border-ledger-border bg-ledger-card hover:bg-ledger-rule text-ink-700 text-xs sm:text-sm transition-colors"
-              title="Configuración de IA y Respaldos"
+              className="p-2 rounded-sm border border-ledger-border bg-ledger-card hover:bg-ledger-rule text-ink-700 transition-colors relative"
+              title="Configuración y Ajustes"
             >
               <Settings className="w-4 h-4 text-ink-700" />
-              <span className="hidden sm:inline">Ajustes</span>
               {hasApiKey ? (
-                <span className="w-2 h-2 rounded-full bg-forest-600" title="API Key conectada" />
+                <span className="w-2 h-2 rounded-full bg-forest-600 absolute top-1.5 right-1.5" title="API Key conectada" />
               ) : (
-                <span className="w-2 h-2 rounded-full bg-leather-600 animate-ping" title="Falta API Key de Gemini" />
+                <span className="w-2 h-2 rounded-full bg-leather-600 animate-ping absolute top-1.5 right-1.5" title="Falta API Key de Gemini" />
               )}
             </button>
           </div>

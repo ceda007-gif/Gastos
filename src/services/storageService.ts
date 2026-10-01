@@ -15,107 +15,26 @@ const INITIAL_SETTINGS: AppSettings = {
   }
 };
 
-const SAMPLE_EXPENSES: Expense[] = [
-  {
-    id: 'sample-1',
-    comercio: 'Supermercado La Comer',
-    fecha: '2026-03-02',
-    total: 845.50,
-    categoria: 'Comida',
-    moneda: 'MXN',
-    persona: 'Pareja',
-    metodoPago: 'Tarjeta de Crédito',
-    ultimos4Digitos: '4582',
-    notas: 'Despensa semanal y frutas',
-    creadoEn: new Date('2026-03-02T11:20:00Z').toISOString(),
-    origen: 'escaneo_ia'
-  },
-  {
-    id: 'sample-2',
-    comercio: 'Gasolinera Mobil Centro',
-    fecha: '2026-03-01',
-    total: 650.00,
-    categoria: 'Gasolina',
-    moneda: 'MXN',
-    persona: 'Carlos',
-    metodoPago: 'Tarjeta de Crédito',
-    ultimos4Digitos: '1209',
-    notas: 'Tanque lleno auto',
-    creadoEn: new Date('2026-03-01T08:15:00Z').toISOString(),
-    origen: 'escaneo_ia'
-  },
-  {
-    id: 'sample-3',
-    comercio: 'Renta Depto / Oficina',
-    fecha: '2026-03-01',
-    total: 8500.00,
-    categoria: 'Renta',
-    moneda: 'MXN',
-    persona: 'Pareja',
-    metodoPago: 'Transferencia',
-    notas: 'Transferencia mensual arrendamiento',
-    creadoEn: new Date('2026-03-01T07:00:00Z').toISOString(),
-    origen: 'manual'
-  },
-  {
-    id: 'sample-4',
-    comercio: 'CFE - Suministro Eléctrico',
-    fecha: '2026-02-28',
-    total: 480.00,
-    categoria: 'Luz',
-    moneda: 'MXN',
-    persona: 'Pareja',
-    metodoPago: 'Efectivo',
-    notas: 'Bimestre enero-febrero',
-    creadoEn: new Date('2026-02-28T14:30:00Z').toISOString(),
-    origen: 'manual'
-  },
-  {
-    id: 'sample-5',
-    comercio: 'GitHub Pro & Copilot',
-    fecha: '2026-02-20',
-    total: 14.00,
-    categoria: 'Servicios',
-    moneda: 'USD',
-    persona: 'Carlos',
-    metodoPago: 'Tarjeta de Crédito',
-    ultimos4Digitos: '1209',
-    notas: 'Suscripción de software mensual',
-    creadoEn: new Date('2026-02-20T10:00:00Z').toISOString(),
-    origen: 'manual'
-  },
-  {
-    id: 'sample-6',
-    comercio: 'Restaurante Los Almendros',
-    fecha: '2026-02-15',
-    total: 520.00,
-    categoria: 'Comida',
-    moneda: 'MXN',
-    persona: 'Yuli',
-    metodoPago: 'Efectivo',
-    notas: 'Comida de trabajo con cliente',
-    creadoEn: new Date('2026-02-15T16:00:00Z').toISOString(),
-    origen: 'escaneo_ia'
-  }
-];
+const SAMPLE_EXPENSES: Expense[] = [];
 
 export function getStoredExpenses(): Expense[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_EXPENSES);
     if (!raw) {
-      // Sembrar datos de muestra iniciales para deleite visual
-      localStorage.setItem(STORAGE_KEY_EXPENSES, JSON.stringify(SAMPLE_EXPENSES));
-      return SAMPLE_EXPENSES;
+      return [];
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      // Migración defensiva: asegurar que todo gasto tenga persona y metodoPago
-      return parsed.map((e: any) => ({
-        ...e,
-        persona: e.persona || 'Pareja',
-        metodoPago: e.metodoPago || 'Efectivo',
-        ultimos4Digitos: e.ultimos4Digitos || undefined
-      }));
+      // Filtrar gastos de prueba previos (sample-1, sample-2, etc.)
+      const cleaned = parsed
+        .filter((e: any) => !String(e.id || '').startsWith('sample-'))
+        .map((e: any) => ({
+          ...e,
+          persona: e.persona || 'Pareja',
+          metodoPago: e.metodoPago || 'Efectivo',
+          ultimos4Digitos: e.ultimos4Digitos || undefined
+        }));
+      return cleaned;
     }
     return [];
   } catch (error) {
