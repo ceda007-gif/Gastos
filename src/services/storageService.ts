@@ -5,7 +5,7 @@ const STORAGE_KEY_SETTINGS = 'mis_cuentas_ajustes_v1';
 
 const INITIAL_SETTINGS: AppSettings = {
   geminiApiKey: '',
-  geminiModel: 'gemini-2.5-flash',
+  geminiModel: 'gemini-3.5-flash',
   userProfile: 'Carlos',
   cloudSync: {
     enabled: true,
@@ -68,8 +68,8 @@ export function getStoredSettings(): AppSettings {
         syncCode: parsed.cloudSync?.syncCode?.trim() || 'FAMILIA-CY'
       }
     };
-    if (!result.geminiModel || result.geminiModel.startsWith('gemini-3')) {
-      result.geminiModel = 'gemini-2.5-flash';
+    if (!result.geminiModel) {
+      result.geminiModel = 'gemini-3.5-flash';
     }
     return result;
   } catch (error) {

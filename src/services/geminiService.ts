@@ -210,7 +210,7 @@ export async function parseReceiptWithGemini(
   base64Data: string,
   mimeType: string,
   apiKey: string,
-  modelName: string = 'gemini-2.5-flash'
+  modelName: string = 'gemini-3.5-flash'
 ): Promise<GeminiParsedReceipt> {
   if (!apiKey || apiKey.trim() === '') {
     throw new Error(
@@ -218,24 +218,32 @@ export async function parseReceiptWithGemini(
     );
   }
 
-  let cleanModel = (modelName || '').trim();
-  if (!cleanModel || cleanModel.startsWith('gemini-3')) {
-    cleanModel = 'gemini-2.5-flash';
+  // 1. Consultar modelos en vivo habilitados para la clave
+  let liveModels: string[] = [];
+  try {
+    liveModels = await getAvailableGeminiModels(apiKey);
+  } catch (e) {
+    console.warn('No se pudieron consultar modelos en vivo:', e);
   }
 
-  // Modelos activos de Google Gemini (Serie 2.5, 2.0 y 1.5)
-  const candidateFallbacks = [
-    cleanModel,
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-1.5-flash',
-    'gemini-2.0-flash-lite',
-    'gemini-2.5-pro',
-    'gemini-1.5-pro'
-  ];
-  const modelsToTry = Array.from(new Set(candidateFallbacks));
-  const triedModels: string[] = [];
+  const preferredCandidates = [
+    modelName?.trim(),
+    'gemini-3.5-flash',
+    'gemini-3.5-flash-lite',
+    'gemini-3.8-flash',
+    'gemini-2.5-flash'
+  ].filter(Boolean) as string[];
 
+  // Priorizar modelos que están confirmados en la cuenta
+  const modelsToTry = liveModels.length > 0
+    ? Array.from(new Set([
+        ...preferredCandidates.filter(m => liveModels.includes(m)),
+        ...liveModels,
+        ...preferredCandidates
+      ]))
+    : Array.from(new Set(preferredCandidates));
+
+  const triedModels: string[] = [];
   const todayStr = new Date().toISOString().slice(0, 10);
   const systemPrompt = `Eres un asistente contable experto en digitalización de comprobantes, recibos y tickets de compra.
 Analiza con máxima precisión la imagen del ticket proporcionada y extrae los siguientes datos:
@@ -267,7 +275,6 @@ REGLAS OBLIGATORIAS:
 - Responde ÚNICAMENTE con el objeto JSON puro sin introducciones ni comentarios adicionales.`;
 
   let lastError: Error | null = null;
-  let dynamicQueried = false;
 
   for (let i = 0; i < modelsToTry.length; i++) {
     const currentModel = modelsToTry[i];
@@ -275,7 +282,8 @@ REGLAS OBLIGATORIAS:
     try {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${apiKey.trim()}`;
 
-      const requestBody = {
+      // Formato REST estándar de Google Gemini (inlineData camelCase)
+      let requestBody: any = {
         contents: [
           {
             parts: [
@@ -283,8 +291,8 @@ REGLAS OBLIGATORIAS:
                 text: systemPrompt
               },
               {
-                inline_data: {
-                  mime_type: mimeType,
+                inlineData: {
+                  mimeType: mimeType,
                   data: base64Data
                 }
               }
@@ -292,14 +300,16 @@ REGLAS OBLIGATORIAS:
           }
         ],
         generationConfig: {
-          response_mime_type: 'application/json',
-          temperature: 0.1,
-          max_output_tokens: 350
+          responseMimeType: 'application/json',
+          maxOutputTokens: 2048,
+          thinkingConfig: {
+            thinkingLevel: 'low'
+          }
         }
       };
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 segundos timeout rápido
+      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 segundos timeout para visión + razonamiento
 
       let response: Response;
       try {
@@ -311,6 +321,21 @@ REGLAS OBLIGATORIAS:
           body: JSON.stringify(requestBody),
           signal: controller.signal
         });
+
+        // Si el modelo rechaza thinkingConfig con 400, reintentar sin thinkingConfig
+        if (!response.ok && response.status === 400) {
+          const errClone = await response.clone().json().catch(() => ({}));
+          const errMsg = errClone?.error?.message || '';
+          if (errMsg.toLowerCase().includes('thinking') || errMsg.toLowerCase().includes('unknown name')) {
+            delete requestBody.generationConfig.thinkingConfig;
+            response = await fetch(endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(requestBody),
+              signal: controller.signal
+            });
+          }
+        }
       } catch (networkErr: any) {
         clearTimeout(timeoutId);
         if (networkErr.name === 'AbortError') {
@@ -328,30 +353,15 @@ REGLAS OBLIGATORIAS:
         const errMsg = errorData?.error?.message || response.statusText;
 
         if (status === 400 || status === 403) {
-          if (errMsg.toLowerCase().includes('api key') || errMsg.toLowerCase().includes('permission')) {
+          if (errMsg.toLowerCase().includes('api key') || errMsg.toLowerCase().includes('permission') || errMsg.toLowerCase().includes('unregistered')) {
             throw new Error(`Clave de API inválida o sin permisos: ${errMsg}. Verifica tu clave en Ajustes.`);
           }
         }
         
-        // Si el modelo específico no fue encontrado (404), intentamos el siguiente modelo en la lista de fallback
+        // Si el modelo específico no fue encontrado (404), intentamos el siguiente modelo
         if (status === 404) {
           console.warn(`Modelo ${currentModel} no disponible (404), probando siguiente modelo...`);
           lastError = new Error(`El modelo ${currentModel} no está disponible actualmente.`);
-
-          // Si estamos por agotar la lista y aún no consultamos los modelos activos de la clave
-          if (!dynamicQueried && i >= modelsToTry.length - 2) {
-            dynamicQueried = true;
-            try {
-              const liveModels = await getAvailableGeminiModels(apiKey);
-              for (const lm of liveModels) {
-                if (!modelsToTry.includes(lm)) {
-                  modelsToTry.push(lm);
-                }
-              }
-            } catch (e) {
-              console.warn('No se pudieron consultar modelos en vivo:', e);
-            }
-          }
           continue;
         }
 
@@ -359,18 +369,28 @@ REGLAS OBLIGATORIAS:
       }
 
       const data = await response.json();
-      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      const parts = data?.candidates?.[0]?.content?.parts || [];
+
+      // Filtrar pensamientos (thought: true) para obtener únicamente la respuesta JSON
+      const contentParts = parts.filter((p: any) => !p.thought && typeof p.text === 'string');
+      let rawText = contentParts.map((p: any) => p.text).join('').trim();
+
+      if (!rawText) {
+        // Si no vino marcada la propiedad thought, buscar el texto que contenga { }
+        const textWithJson = [...parts].reverse().find((p: any) => typeof p.text === 'string' && p.text.includes('{'));
+        rawText = textWithJson ? textWithJson.text.trim() : (parts[0]?.text || '').trim();
+      }
 
       if (!rawText) {
         throw new Error('La IA no devolvió ninguna respuesta legible.');
       }
 
-      // Limpiar posibles bloques ```json ... ``` si vinieran incluidos
-      let cleanedJson = rawText.trim();
-      if (cleanedJson.startsWith('```json')) {
-        cleanedJson = cleanedJson.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-      } else if (cleanedJson.startsWith('```')) {
-        cleanedJson = cleanedJson.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      // Extraer bloque JSON limpiando bloques de código o texto adicional
+      let cleanedJson = rawText;
+      const firstBrace = cleanedJson.indexOf('{');
+      const lastBrace = cleanedJson.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        cleanedJson = cleanedJson.slice(firstBrace, lastBrace + 1);
       }
 
       const parsed = JSON.parse(cleanedJson);

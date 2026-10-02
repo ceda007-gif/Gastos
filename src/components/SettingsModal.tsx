@@ -45,11 +45,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onExpensesUpdated
 }) => {
   const [apiKey, setApiKey] = useState(settings.geminiApiKey);
-  const [model, setModel] = useState(
-    settings.geminiModel && !settings.geminiModel.startsWith('gemini-3')
-      ? settings.geminiModel
-      : 'gemini-2.5-flash'
-  );
+  const [model, setModel] = useState(settings.geminiModel || 'gemini-3.5-flash');
   const [userProfile, setUserProfile] = useState<UserProfile>(settings.userProfile || 'Carlos');
   const [syncCode, setSyncCode] = useState(settings.cloudSync?.syncCode || 'FAMILIA-CY');
   const [firebaseProjectId, setFirebaseProjectId] = useState(settings.cloudSync?.firebaseProjectId || 'gastos-9bdbb');
@@ -68,11 +64,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   React.useEffect(() => {
     if (isOpen) {
       setApiKey(settings.geminiApiKey || '');
-      setModel(
-        settings.geminiModel && !settings.geminiModel.startsWith('gemini-3')
-          ? settings.geminiModel
-          : 'gemini-2.5-flash'
-      );
+      setModel(settings.geminiModel || 'gemini-3.5-flash');
       setUserProfile(settings.userProfile || 'Carlos');
       setSyncCode(settings.cloudSync?.syncCode || 'FAMILIA-CY');
       setFirebaseProjectId(settings.cloudSync?.firebaseProjectId || 'gastos-9bdbb');
@@ -355,10 +347,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 ))
               ) : (
                 <>
-                  <option value="gemini-2.5-flash">gemini-2.5-flash (Recomendado — Alta velocidad y precisión)</option>
-                  <option value="gemini-2.0-flash">gemini-2.0-flash (Serie 2.0 Estable)</option>
-                  <option value="gemini-1.5-flash">gemini-1.5-flash (Serie 1.5 Amplia compatibilidad)</option>
-                  <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite (Ligero y ultrarrápido)</option>
+                  <option value="gemini-3.5-flash">gemini-3.5-flash (Recomendado — Alta velocidad y precisión)</option>
+                  <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Ultrarrápido y ligero)</option>
+                  <option value="gemini-3.8-flash">gemini-3.8-flash (Máxima capacidad de razonamiento)</option>
+                  <option value="gemini-2.5-flash">gemini-2.5-flash (Serie Gemini 2.5)</option>
                 </>
               )}
             </select>
