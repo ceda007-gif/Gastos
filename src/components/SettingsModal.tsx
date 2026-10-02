@@ -45,7 +45,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onExpensesUpdated
 }) => {
   const [apiKey, setApiKey] = useState(settings.geminiApiKey);
-  const [model, setModel] = useState(settings.geminiModel || 'gemini-3.8-flash');
+  const [model, setModel] = useState(
+    settings.geminiModel && !settings.geminiModel.startsWith('gemini-3')
+      ? settings.geminiModel
+      : 'gemini-2.5-flash'
+  );
   const [userProfile, setUserProfile] = useState<UserProfile>(settings.userProfile || 'Carlos');
   const [syncCode, setSyncCode] = useState(settings.cloudSync?.syncCode || 'FAMILIA-CY');
   const [firebaseProjectId, setFirebaseProjectId] = useState(settings.cloudSync?.firebaseProjectId || 'gastos-9bdbb');
@@ -64,7 +68,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   React.useEffect(() => {
     if (isOpen) {
       setApiKey(settings.geminiApiKey || '');
-      setModel(settings.geminiModel || 'gemini-3.8-flash');
+      setModel(
+        settings.geminiModel && !settings.geminiModel.startsWith('gemini-3')
+          ? settings.geminiModel
+          : 'gemini-2.5-flash'
+      );
       setUserProfile(settings.userProfile || 'Carlos');
       setSyncCode(settings.cloudSync?.syncCode || 'FAMILIA-CY');
       setFirebaseProjectId(settings.cloudSync?.firebaseProjectId || 'gastos-9bdbb');
@@ -318,7 +326,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="flex items-center justify-between">
               <label className="block text-xs font-semibold text-ink-800 uppercase tracking-wider flex items-center gap-1.5">
                 <Cpu className="w-3.5 h-3.5 text-forest-800" />
-                <span>Modelo Flash de Google Gemini (Serie 3 y 2.5)</span>
+                <span>Modelo Flash de Google Gemini</span>
               </label>
               
               <button
@@ -347,11 +355,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 ))
               ) : (
                 <>
-                  <option value="gemini-3.8-flash">gemini-3.8-flash (Recomendado — Actual 2026)</option>
-                  <option value="gemini-3.7-flash">gemini-3.7-flash (Serie Gemini 3)</option>
-                  <option value="gemini-3.5-flash">gemini-3.5-flash (Serie Gemini 3)</option>
-                  <option value="gemini-3-flash">gemini-3-flash (Serie Gemini 3)</option>
-                  <option value="gemini-2.5-flash">gemini-2.5-flash (Serie Gemini 2.5)</option>
+                  <option value="gemini-2.5-flash">gemini-2.5-flash (Recomendado — Alta velocidad y precisión)</option>
+                  <option value="gemini-2.0-flash">gemini-2.0-flash (Serie 2.0 Estable)</option>
+                  <option value="gemini-1.5-flash">gemini-1.5-flash (Serie 1.5 Amplia compatibilidad)</option>
+                  <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite (Ligero y ultrarrápido)</option>
                 </>
               )}
             </select>
@@ -363,7 +370,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             )}
 
             <p className="text-[11px] text-ink-500">
-              💡 <strong>Nota sobre versiones:</strong> Google retiró las versiones antiguas 1.5 y 2.0 en favor de la generación actual <strong>Gemini 3</strong> y 2.5.
+              💡 <strong>Detección automática:</strong> El escaneo inteligente probará automáticamente entre los modelos disponibles si uno estuviera saturado o no disponible en tu región.
             </p>
           </div>
 

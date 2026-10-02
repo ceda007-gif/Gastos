@@ -5,7 +5,7 @@ const STORAGE_KEY_SETTINGS = 'mis_cuentas_ajustes_v1';
 
 const INITIAL_SETTINGS: AppSettings = {
   geminiApiKey: '',
-  geminiModel: 'gemini-3.8-flash',
+  geminiModel: 'gemini-2.5-flash',
   userProfile: 'Carlos',
   cloudSync: {
     enabled: true,
@@ -57,8 +57,7 @@ export function getStoredSettings(): AppSettings {
     if (!raw) {
       return INITIAL_SETTINGS;
     }
-    const parsed = JSON.parse(raw);
-    return {
+    const result: AppSettings = {
       ...INITIAL_SETTINGS,
       ...parsed,
       cloudSync: {
@@ -69,6 +68,10 @@ export function getStoredSettings(): AppSettings {
         syncCode: parsed.cloudSync?.syncCode?.trim() || 'FAMILIA-CY'
       }
     };
+    if (!result.geminiModel || result.geminiModel.startsWith('gemini-3')) {
+      result.geminiModel = 'gemini-2.5-flash';
+    }
+    return result;
   } catch (error) {
     console.error('Error al leer configuración de localStorage:', error);
     return INITIAL_SETTINGS;

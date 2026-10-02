@@ -172,8 +172,7 @@ function useFileReaderFallback(
 }
 
 /**
-/**
- * Consulta la API de Google Gemini para obtener la lista de modelos Flash activos
+ * Consulta la API de Google Gemini para obtener la lista de modelos activos
  * habilitados para la clave proporcionada.
  */
 export async function getAvailableGeminiModels(apiKey: string): Promise<string[]> {
@@ -183,13 +182,20 @@ export async function getAvailableGeminiModels(apiKey: string): Promise<string[]
     if (!response.ok) return [];
     const data = await response.json();
     if (data && Array.isArray(data.models)) {
-      return data.models
+      const available = data.models
         .filter((m: any) => 
           Array.isArray(m.supportedGenerationMethods) && 
-          m.supportedGenerationMethods.includes('generateContent') &&
-          m.name && m.name.toLowerCase().includes('flash')
+          m.supportedGenerationMethods.includes('generateContent')
         )
         .map((m: any) => m.name.replace(/^models\//, ''));
+
+      // Ordenar: primero los modelos Flash, luego por versión descendente
+      return available.sort((a: string, b: string) => {
+        const aFlash = a.toLowerCase().includes('flash') ? 1 : 0;
+        const bFlash = b.toLowerCase().includes('flash') ? 1 : 0;
+        if (aFlash !== bFlash) return bFlash - aFlash;
+        return b.localeCompare(a);
+      });
     }
   } catch (err) {
     console.warn('No se pudo consultar la lista de modelos de Gemini:', err);
@@ -204,7 +210,7 @@ export async function parseReceiptWithGemini(
   base64Data: string,
   mimeType: string,
   apiKey: string,
-  modelName: string = 'gemini-3.8-flash'
+  modelName: string = 'gemini-2.5-flash'
 ): Promise<GeminiParsedReceipt> {
   if (!apiKey || apiKey.trim() === '') {
     throw new Error(
@@ -212,19 +218,23 @@ export async function parseReceiptWithGemini(
     );
   }
 
-  // Modelos activos de la serie Gemini 3 y 2.5 (Gemini 1.5 y 2.0 fueron dados de baja por Google)
-  const primaryModel = modelName.trim() || 'gemini-3.8-flash';
+  let cleanModel = (modelName || '').trim();
+  if (!cleanModel || cleanModel.startsWith('gemini-3')) {
+    cleanModel = 'gemini-2.5-flash';
+  }
+
+  // Modelos activos de Google Gemini (Serie 2.5, 2.0 y 1.5)
   const candidateFallbacks = [
-    'gemini-3.8-flash',
-    'gemini-3.7-flash',
-    'gemini-3.5-flash',
-    'gemini-3-flash',
-    'gemini-2.5-flash'
+    cleanModel,
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+    'gemini-2.0-flash-lite',
+    'gemini-2.5-pro',
+    'gemini-1.5-pro'
   ];
-  const modelsToTry = [
-    primaryModel,
-    ...candidateFallbacks.filter(m => m !== primaryModel)
-  ];
+  const modelsToTry = Array.from(new Set(candidateFallbacks));
+  const triedModels: string[] = [];
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const systemPrompt = `Eres un asistente contable experto en digitalización de comprobantes, recibos y tickets de compra.
@@ -257,8 +267,11 @@ REGLAS OBLIGATORIAS:
 - Responde ÚNICAMENTE con el objeto JSON puro sin introducciones ni comentarios adicionales.`;
 
   let lastError: Error | null = null;
+  let dynamicQueried = false;
 
-  for (const currentModel of modelsToTry) {
+  for (let i = 0; i < modelsToTry.length; i++) {
+    const currentModel = modelsToTry[i];
+    triedModels.push(currentModel);
     try {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${apiKey.trim()}`;
 
@@ -324,6 +337,21 @@ REGLAS OBLIGATORIAS:
         if (status === 404) {
           console.warn(`Modelo ${currentModel} no disponible (404), probando siguiente modelo...`);
           lastError = new Error(`El modelo ${currentModel} no está disponible actualmente.`);
+
+          // Si estamos por agotar la lista y aún no consultamos los modelos activos de la clave
+          if (!dynamicQueried && i >= modelsToTry.length - 2) {
+            dynamicQueried = true;
+            try {
+              const liveModels = await getAvailableGeminiModels(apiKey);
+              for (const lm of liveModels) {
+                if (!modelsToTry.includes(lm)) {
+                  modelsToTry.push(lm);
+                }
+              }
+            } catch (e) {
+              console.warn('No se pudieron consultar modelos en vivo:', e);
+            }
+          }
           continue;
         }
 
@@ -414,6 +442,6 @@ REGLAS OBLIGATORIAS:
   }
 
   throw new Error(
-    `No se pudo procesar con los modelos intentados (${modelsToTry.slice(0, 3).join(', ')}). ${lastError?.message || 'Verifica tu API Key en Ajustes.'}`
+    `No se pudo procesar con los modelos intentados (${Array.from(new Set(triedModels)).slice(0, 4).join(', ')}). ${lastError?.message || 'Verifica tu API Key en Ajustes.'}`
   );
 }
