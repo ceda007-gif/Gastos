@@ -104,6 +104,36 @@ export const App: React.FC = () => {
     return visibleExpenses.filter(e => e.fecha.startsWith(selectedMonth));
   }, [visibleExpenses, selectedMonth]);
 
+  // Gastos adaptados para los desgloses según la persona seleccionada (Carlos / Pareja / Todos)
+  const breakdownExpenses = useMemo(() => {
+    if (selectedPerson !== 'ALL') {
+      return visibleExpenses.filter(e => (e.persona || 'Pareja') === selectedPerson);
+    }
+
+    // Si 'Todos mis gastos' está seleccionado en perfil personal (Carlos o Yuli):
+    // Los gastos de Pareja se cuentan al 50% para que el total coincida con 'Mi Parte'
+    if (currentProfile !== 'Todos') {
+      return visibleExpenses.map(e => {
+        const isPareja = (e.persona || 'Pareja') === 'Pareja';
+        if (isPareja) {
+          return {
+            ...e,
+            total: e.total / 2
+          };
+        }
+        return e;
+      });
+    }
+
+    return visibleExpenses;
+  }, [visibleExpenses, selectedPerson, currentProfile]);
+
+  // Gastos para Desglose por Categoría (filtrados por persona y por mes seleccionado)
+  const expensesForCategoryBreakdown = useMemo(() => {
+    if (selectedMonth === 'ALL') return breakdownExpenses;
+    return breakdownExpenses.filter(e => e.fecha.startsWith(selectedMonth));
+  }, [breakdownExpenses, selectedMonth]);
+
   const selectedMonthLabel = selectedMonth === 'ALL' 
     ? 'Todos los meses' 
     : formatMonthYear(selectedMonth);
@@ -292,11 +322,11 @@ export const App: React.FC = () => {
           {/* Columna Lateral: Desgloses por Categoría y Mes (5 columnas en escritorio) */}
           <aside className="lg:col-span-5 xl:col-span-4 space-y-5">
             {/* Desglose por Categoría */}
-            <CategoryBreakdown expenses={expensesForCurrentFilter} />
+            <CategoryBreakdown expenses={expensesForCategoryBreakdown} />
 
             {/* Desglose por Mes */}
             <MonthlyBreakdown
-              expenses={expenses}
+              expenses={breakdownExpenses}
               onSelectMonth={(monthKey) => setSelectedMonth(monthKey)}
             />
           </aside>
